@@ -4,22 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       inst_id:
-        description: "OKX Spot USDT instrument (example SOL-USDT)"
+        description: "OKX Spot USDT instrument"
         required: true
         default: "SOL-USDT"
       bar:
-        description: "Candle interval (5m, 15m, 1H, 4H, 1D)"
+        description: "Candle interval"
         required: true
         default: "1H"
       candles:
         description: "Confirmed historical candles (120-10000)"
         required: true
         default: "1500"
-  schedule:
-    - cron: "17 * * * *"
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: strategy-lab-research
@@ -28,7 +27,7 @@ concurrency:
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 350
     steps:
       - name: Checkout persistent research state
         uses: actions/checkout@v4
@@ -41,21 +40,36 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
-      - name: Fetch OKX candles and evaluate 10 strategies
+      - name: Run 200 sequential research cycles and save every cycle
         env:
           INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'SOL-USDT' }}
           INPUT_BAR: ${{ github.event.inputs.bar || '1H' }}
           INPUT_CANDLES: ${{ github.event.inputs.candles || '1500' }}
         run: |
-          python main.py --inst-id "$INPUT_INST_ID" --bar "$INPUT_BAR" --candles "$INPUT_CANDLES"
-      - name: Persist memory and latest results
-        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/lab_memory.json data/latest_cycle.json
-          if git diff --cached --quiet; then
-            echo "No research state changes to commit."
-          else
-            git commit -m "Persist Strategy Lab research cycle [skip ci]"
-            git push origin HEAD:main
-          fi
+          for cycle in $(seq 1 200); do
+            echo "========== Batch cycle $cycle / 200 =========="
+            python main.py --inst-id "$INPUT_INST_ID" --bar "$INPUT_BAR" --candles "$INPUT_CANDLES"
+            git add data/lab_memory.json data/latest_cycle.json data/strategy_report.json data/strategy_report.html
+            if ! git diff --cached --quiet; then
+              git commit -m "Strategy Lab cycle ${cycle}/200 [skip ci]"
+              git push origin HEAD:main
+            else
+              echo "No changed research files in this cycle."
+            fi
+          done
+      - name: Start the next 200-cycle workflow
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'SOL-USDT' }}
+          INPUT_BAR: ${{ github.event.inputs.bar || '1H' }}
+          INPUT_CANDLES: ${{ github.event.inputs.candles || '1500' }}
+        run: |
+          gh workflow run research.yml --ref main \
+            -f inst_id="$INPUT_INST_ID" \
+            -f bar="$INPUT_BAR" \
+            -f candles="$INPUT_CANDLES"
+          echo "Next 200-cycle workflow dispatched."
