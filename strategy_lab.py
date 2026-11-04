@@ -11,6 +11,7 @@ CANDLE_PATTERNS = [
 'ENGULFING','HARAMI','HARAMI_CROSS','PIERCING','DARK_CLOUD_COVER','COUNTERATTACK','KICKING','MATCHING_LOW','MATCHING_HIGH','HOMING_PIGEON','MEETING_LINES','ON_NECK','IN_NECK','THRUSTING','SEPARATING_LINES','TASUKI_GAP','GAP_SIDE_BY_SIDE_WHITE','HIKKAKE','HIKKAKE_MODIFIED',
 'MORNING_STAR','EVENING_STAR','MORNING_DOJI_STAR','EVENING_DOJI_STAR','THREE_WHITE_SOLDIERS','THREE_BLACK_CROWS','THREE_INSIDE_UP','THREE_INSIDE_DOWN','THREE_OUTSIDE_UP','THREE_OUTSIDE_DOWN','THREE_LINE_STRIKE','THREE_STARS_IN_SOUTH','THREE_GAP_UPSIDE_TASUKI','UNIQUE_THREE_RIVER','ADVANCE_BLOCK','STALLED_PATTERN','IDENTICAL_THREE_CROWS','TRISTAR','ABANDONED_BABY','CONCEALING_BABY_SWALLOW','LADDER_BOTTOM','BREAKAWAY','MAT_HOLD','RISE_FALL_THREE_METHODS','UPSIDE_GAP_TWO_CROWS','DOWNSIDE_GAP_THREE_METHODS','LONG_LINE','SHORT_LINE','GAP']
 PERIODS=[2,3,5,7,9,10,12,14,16,20,21,24,30,34,40,50,55,60,72,80,100,120,144,200,240]
+MIN_QUALIFYING_TRADES = 100
 ROUND_TRIP_FEE_BPS=20.0
 SLIPPAGE_BPS_PER_SIDE=5.0
 
@@ -207,10 +208,10 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
              +0.12*(validation['win_rate']-.5)
              -0.10*abs(validation['max_drawdown'])
              -sample_penalty) if validation['trades'] else -1.0
-    status='evaluated' if validation['trades']>=5 and test['trades']>=3 else 'low_sample'
+    status='evaluated' if validation['trades']>=MIN_QUALIFYING_TRADES and test['trades']>=MIN_QUALIFYING_TRADES else 'insufficient_sample'
     return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
             'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
-            'fitness_basis':'validation_only'}
+            'fitness_basis':'validation_only', 'minimum_trades_for_qualification': MIN_QUALIFYING_TRADES}
 
 def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',candidate_count:int=10,timeframe:str='1H')->dict[str,Any]:
     if candidate_count!=10: raise ValueError('Exactly 10 strategies are generated per cycle.')
@@ -249,7 +250,7 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['last_test_trades']=int(test.get('trades',0))
         stats['successful']=bool(
             ev.get('status')=='evaluated'
-            and validation.get('trades',0)>=5 and test.get('trades',0)>=3
+            and validation.get('trades',0)>=MIN_QUALIFYING_TRADES and test.get('trades',0)>=MIN_QUALIFYING_TRADES
             and validation.get('net_total_return',0)>0
             and test.get('net_total_return',0)>0
             and validation.get('profit_factor',0)>1
