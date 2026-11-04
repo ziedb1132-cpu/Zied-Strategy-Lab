@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from okx_data import fetch_okx_candles
+from okx_data import fetch_okx_candles, SUPPORTED_BARS
 from strategy_lab import FEATURE_CATALOG, CANDLE_PATTERNS, extract_features, discover_cycle
 
 
@@ -85,3 +85,23 @@ def test_okx_candle_fetcher_parses_confirmed_rows(monkeypatch):
 def test_okx_candle_fetcher_rejects_non_usdt_pairs():
     with pytest.raises(ValueError, match="USDT"):
         fetch_okx_candles("BTC-USDC", "1H", 120)
+
+
+
+def test_all_okx_timeframes_are_declared():
+    assert {"1s", "1m", "3m", "5m", "15m", "30m", "1H", "2H", "4H",
+            "6H", "12H", "1D", "2D", "3D", "1W", "1M", "3M",
+            "6Hutc", "12Hutc", "1Dutc", "2Dutc", "3Dutc", "1Wutc",
+            "1Mutc", "3Mutc"} == set(SUPPORTED_BARS)
+
+
+def test_strategy_memory_keeps_timeframes_separate(tmp_path):
+    memory = tmp_path / "memory.json"
+    frame = sample_ohlcv()
+    first = discover_cycle(frame, memory_path=str(memory), timeframe="1H")
+    second = discover_cycle(frame, memory_path=str(memory), timeframe="4H")
+    saved = json.loads(memory.read_text(encoding="utf-8"))
+    assert all(item["bar"] == "1H" for item in first["candidates"])
+    assert all(item["bar"] == "4H" for item in second["candidates"])
+    assert saved["timeframe_cycles"] == {"1H": 1, "4H": 1}
+    assert len(saved["performance"]) == 20
