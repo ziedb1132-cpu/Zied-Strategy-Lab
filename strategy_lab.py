@@ -334,12 +334,14 @@ def build_chart_payload(frame: pd.DataFrame, memory_path: str = "data/lab_memory
         atr_ratio = float(atr_col.iloc[entry_i]) if atr_col is not None else 0.0
         atr = atr_ratio * entry if atr_ratio > 0 else 0.0
         if atr > 0:
+            active = age <= int(candidate.get("holding_bars", 0))
             payload["signal"] = {
                 "side": "BUY", "time": int(pd.Timestamp(clean.iloc[entry_i]["timestamp"]).timestamp()),
                 "entry": entry, "age_bars": age,
-                "status": "ACTIVE" if age <= int(candidate.get("holding_bars", 0)) else "EXPIRED"
+                "status": "ACTIVE" if active else "EXPIRED"
             }
-            payload["levels"] = {"entry": entry, "sl": entry - 2.0 * atr,
-                                 "tp": entry + 3.0 * atr, "atr": atr}
+            if active:
+                payload["levels"] = {"entry": entry, "sl": entry - 2.0 * atr,
+                                     "tp": entry + 3.0 * atr, "atr": atr}
     payload["status"] = "ready" if payload["levels"] else "no_recent_buy_signal"
     return payload
