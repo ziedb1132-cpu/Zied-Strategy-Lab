@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import pandas as pd
 from okx_data import fetch_okx_candles, SUPPORTED_BARS, default_candle_count
-from strategy_lab import discover_cycle, build_chart_payload
+from strategy_lab import discover_cycle, build_chart_payload, evaluate_cross_asset_candidates
 from strategy_report import build_report
 
 
@@ -16,6 +16,7 @@ def main() -> None:
     parser.add_argument("--bar", default="ALL", help="Candle interval or ALL for every supported OKX interval.")
     parser.add_argument("--candles", type=int, default=0, help="Confirmed historical candles; 0 selects the timeframe default.")
     parser.add_argument("--timeout", type=int, default=20)
+    parser.add_argument("--cross-instruments", default="BTC-USDT,ETH-USDT,BNB-USDT", help="Comma-separated instruments used for independent cross-asset validation.")
     parser.add_argument("--memory", default="data/lab_memory.json")
     parser.add_argument("--out", default="data/latest_cycle.json")
     args = parser.parse_args()
@@ -40,6 +41,32 @@ def main() -> None:
                           "candles_requested": requested_candles, "candles_received": len(frame)}
 
             result = discover_cycle(frame, memory_path=args.memory, candidate_count=10, timeframe=bar)
+            cross_ids = [x.strip().upper() for x in args.cross_instruments.split(",") if x.strip()]
+            cross_frames = {}
+            for cross_id in cross_ids:
+                if cross_id == args.inst_id.upper():
+                    continue
+                try:
+                    cross_frames[cross_id] = fetch_okx_candles(
+                        cross_id, bar, requested_candles if not args.csv else default_candle_count(bar), args.timeout
+                    )
+                except Exception as cross_exc:
+                    print(f"WARNING: cross-asset data skipped for {cross_id} ({bar}): {cross_exc}")
+            cross_results = evaluate_cross_asset_candidates(result["candidates"], cross_frames) if cross_frames else {}
+            if cross_results:
+                memory_file = Path(args.memory)
+                saved_memory = json.loads(memory_file.read_text(encoding="utf-8"))
+                for candidate in result["candidates"]:
+                    asset_result = cross_results.get(candidate["id"], {})
+                    candidate["evaluation"]["cross_asset"] = asset_result
+                    stats = saved_memory.get("performance", {}).get(candidate["id"], {})
+                    stats["cross_asset_validation"] = asset_result
+                    valid_assets = [v.get("validation", {}) for v in asset_result.values() if v.get("status") == "evaluated"]
+                    stats["cross_asset_count"] = len(valid_assets)
+                    stats["cross_asset_positive_count"] = sum(1 for v in valid_assets if v.get("net_total_return", 0) > 0)
+                    saved_memory.get("performance", {})[candidate["id"]] = stats
+                memory_file.write_text(json.dumps(saved_memory, indent=2, allow_nan=False), encoding="utf-8")
+            result["cross_asset_instruments"] = list(cross_frames)
             result["data_source"] = source
             out = Path(args.out)
             out.parent.mkdir(parents=True, exist_ok=True)
