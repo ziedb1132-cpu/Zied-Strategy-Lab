@@ -339,10 +339,6 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     if not cols or n<max(120,hold*6):
         return {'train':empty,'validation':empty,'test':empty,'fitness':-1.0,'status':'insufficient_history'}
     # Causal rolling normalization: every row uses only its own and prior observations.
-    x=features[cols].astype(float)
-    means=x.rolling(100,min_periods=30).mean()
-    std=x.rolling(100,min_periods=30).std()
-    normalized=((x-means)/(std+1e-9)).clip(-4,4).fillna(0)
     strength=_candidate_strength(candidate,features)
     threshold=float(candidate['threshold'])
     signal=np.where(strength>threshold,1,np.where(strength<-threshold,-1,0))
@@ -398,7 +394,14 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     advanced_test=_advanced_execution(candidate,features,execution_frame,validation_end,n)
     monte_carlo=_monte_carlo(advanced_validation.get('trade_returns',[]),seed=int(hashlib.sha1(candidate.get('id','').encode()).hexdigest()[:8],16) if candidate.get('id') else 17)
     confidence=_confidence_score(validation,walk_forward,robustness_result,monte_carlo)
-    return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
+    advanced_pf=min(float(advanced_validation.get('profit_factor',0.0)),3.0)
+    advanced_fitness=(0.70*float(advanced_validation.get('net_mean_return',0.0))*100
+                      +0.20*(advanced_pf-1.0)
+                      -0.10*abs(float(advanced_validation.get('max_drawdown',0.0)))
+                      -0.50*float(monte_carlo.get('risk_of_ruin') or 0.0))
+    combined_fitness=float(fitness+0.25*advanced_fitness)
+    return {'train':train,'validation':validation,'test':test,'fitness':combined_fitness,
+            'legacy_fitness':float(fitness),'advanced_execution_fitness':float(advanced_fitness),'status':status,
             'walk_forward':walk_forward,'market_regimes':regime_metrics,'robustness':robustness_result,
             'quality_score':float(max(0.0,min(100.0,50+fitness*100))),
             'advanced_execution':{'validation':advanced_validation,'test':advanced_test},'monte_carlo':monte_carlo,'confidence_score':confidence,
@@ -415,6 +418,7 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
     prior.sort(key=lambda c: (
         bool(memory.get('performance',{}).get(c.get('id',''),{}).get('successful',False)),
         float(memory.get('performance',{}).get(c.get('id',''),{}).get('last_validation_net_total_return',0.0)),
+        float(memory.get('performance',{}).get(c.get('id',''),{}).get('last_confidence_score',0.0)),
         float(memory.get('performance',{}).get(c.get('id',''),{}).get('last_validation_profit_factor',0.0))
     ), reverse=True)
     available=[x for x in features.columns if not x.startswith('talib_')]
@@ -459,6 +463,8 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['last_advanced_execution']=ev.get('advanced_execution',{})
         stats['last_monte_carlo']=ev.get('monte_carlo',{})
         stats['last_confidence_score']=float(ev.get('confidence_score',0.0))
+        stats['last_advanced_execution_fitness']=float(ev.get('advanced_execution_fitness',0.0))
+        stats['last_advanced_validation']=ev.get('advanced_execution',{}).get('validation',{})
         stats['last_strategy_diversity']=ev.get('strategy_diversity',{})
         stats['last_market_regimes']=ev.get('market_regimes',{})
         stats['last_robustness']=ev.get('robustness',{})
