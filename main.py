@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 from okx_data import fetch_okx_candles
 from strategy_lab import discover_cycle
+from strategy_report import build_report
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Research-only strategy discovery using public OKX Spot candles.")
@@ -29,8 +30,11 @@ def main() -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
-    print(f"Cycle {result['cycle']} complete: {len(result['candidates'])} candidates; "
-          f"{source['type']} data; {len(frame)} candles -> {out}")
+    report = build_report(args.memory, args.out)
+    print(f"Cycle {result['cycle']} complete: {len(result['candidates'])} BUY candidates; "
+          f"{report['strategies_discovered']} unique strategies; "
+          f"{report['successful_buy_strategies']} successful; {source['type']} data; "
+          f"{len(frame)} candles -> {out}")
 
 if __name__ == "__main__":
     main()
