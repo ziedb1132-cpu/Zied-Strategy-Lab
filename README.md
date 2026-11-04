@@ -1,21 +1,21 @@
 # Zied Strategy Lab
 
-An independent research sandbox for adaptive strategy discovery. It is separate from `Zied-` and does not place live OKX orders.
+An independent research sandbox; separate from `Zied-`. It does not send live OKX orders.
 
-## Current engine
-- Generates **exactly 10 candidate strategies per discovery cycle**.
-- Builds a selectable feature catalog from indicator families, periods, transforms, crossovers, candle geometry and context; the catalog is asserted to contain **more than 1,000 definitions**.
-- Includes a broad catalog of classic Japanese candlestick patterns. If TA-Lib is installed, its full Pattern Recognition family is also extracted.
-- Uses a persistent JSON memory file to retain prior candidates and cycle evaluations.
-- Conservatively excludes the last input row as potentially unfinished and evaluates candidates using forward returns as a baseline research proxy.
+## Implemented
+- Exactly **10 candidate strategies per cycle**.
+- Generated feature catalog with **1,000+ selectable definitions**; the runtime currently computes a smaller concrete set of feature columns and samples candidates from those computed features.
+- Candle anatomy, common single-/multi-candle recognizers and a broad pattern-name catalog. For broader established pattern recognition, install TA-Lib; its Pattern Recognition outputs are integrated when available. Some uncommon pattern names remain conservative placeholders without TA-Lib.
+- Persistent candidate/cycle memory in JSON.
+- Chronological forward-return scoring with non-overlapping holding windows and estimated transaction costs.
+- Last input row is conservatively excluded as potentially unfinished.
 
-## Run locally
+## Run
 ```bash
 pip install -r requirements.txt
 python main.py --csv path/to/ohlcv.csv
-```
+``
+CSV columns: `open, high, low, close, volume`; optional `timestamp` sorts the data. Results: `data/latest_cycle.json`; memory: `data/lab_memory.json`.
 
-CSV must contain `open, high, low, close, volume`; optional `timestamp` is used to sort rows. Outputs are written to `data/latest_cycle.json`; persistent memory is stored at `data/lab_memory.json`.
-
-## Important limitations
-This is an initial research baseline, not a production backtester. The present evaluation proxy does not yet model exchange fees, slippage, order execution, stop-loss/take-profit behavior or portfolio constraints. Do not treat candidate scores as live trade recommendations.
+## Evaluation caveats
+Current costs are configurable constants (20 bps round-trip fee plus 5 bps slippage per side by default), not live exchange-specific fee tiers. The baseline evaluator uses fixed holding-period returns; it does not yet model OHLC stop/target execution, partial fills, funding, liquidity constraints, or portfolio interactions. Results are research metrics, not forecasts or trade recommendations.
