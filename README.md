@@ -16,7 +16,7 @@ An independent research sandbox; separate from `Zied-`. It does not send live OK
 ## Run locally
 ```bash
 pip install -r requirements.txt
-python main.py --inst-id BTC-USDT --bar 1H --candles 1500
+python main.py --inst-id SOL-USDT --bar 1H --candles 1500
 ```
 
 You can also supply a local CSV instead:
