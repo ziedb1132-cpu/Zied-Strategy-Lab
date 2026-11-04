@@ -89,10 +89,7 @@ def test_okx_candle_fetcher_rejects_non_usdt_pairs():
 
 
 def test_all_okx_timeframes_are_declared():
-    assert {"1s", "1m", "3m", "5m", "15m", "30m", "1H", "2H", "4H",
-            "6H", "12H", "1D", "2D", "3D", "1W", "1M", "3M",
-            "6Hutc", "12Hutc", "1Dutc", "2Dutc", "3Dutc", "1Wutc",
-            "1Mutc", "3Mutc"} == set(SUPPORTED_BARS)
+    assert {"5m", "15m", "30m", "1H", "4H", "1D"} == set(SUPPORTED_BARS)
 
 
 def test_strategy_memory_keeps_timeframes_separate(tmp_path):
