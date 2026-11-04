@@ -141,3 +141,36 @@ def test_cross_asset_validation_is_reported_separately():
     assert "ETH-USDT" in result["cross-test"]
     assert "validation" in result["cross-test"]["ETH-USDT"]
     assert "test" not in result["cross-test"]["ETH-USDT"]
+
+
+def test_hybrid_entry_exit_monte_carlo_and_confidence():
+    from strategy_lab import _advanced_execution, _monte_carlo, _confidence_score
+    frame = sample_ohlcv(900).iloc[:-1].reset_index(drop=True)
+    features = extract_features(frame)
+    candidate = {"id": "hybrid-test", "features": ["ema_5_raw", "rsi_14_raw", "pattern_doji"],
+                 "direction": "long", "threshold": 0.2, "holding_bars": 12,
+                 "hybrid_mode": "consensus", "entry_method": "confirmation",
+                 "exit_policy": "trailing", "tp_atr": 2.0, "sl_atr": 1.5}
+    result = _advanced_execution(candidate, features, frame, 500, 899)
+    assert result["entry_method"] == "confirmation"
+    assert result["exit_policy"] == "trailing"
+    assert result["trades"] >= 0
+    mc = _monte_carlo([0.02, -0.01, 0.03, -0.02, 0.01], simulations=200)
+    assert mc["simulations"] == 200
+    assert 0 <= mc["risk_of_ruin"] <= 1
+    confidence = _confidence_score(
+        {"trades": 50}, {"positive_folds": 2, "folds_with_trades": 4},
+        {"positive_runs": 2}, mc, {}
+    )
+    assert 0 <= confidence <= 100
+
+
+def test_candidates_have_hybrid_and_exit_configuration(tmp_path):
+    result = discover_cycle(sample_ohlcv(900), memory_path=str(tmp_path / "memory.json"))
+    for candidate in result["candidates"]:
+        assert candidate["hybrid_mode"] in {"mean", "consensus", "weighted"}
+        assert candidate["entry_method"] in {"market", "breakout", "pullback", "retest", "confirmation"}
+        assert candidate["exit_policy"] in {"fixed_bracket", "trailing", "time_exit", "adaptive_bracket"}
+        assert "advanced_execution" in candidate["evaluation"]
+        assert "monte_carlo" in candidate["evaluation"]
+        assert "confidence_score" in candidate["evaluation"]
