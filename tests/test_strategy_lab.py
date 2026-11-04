@@ -43,6 +43,7 @@ def test_cycle_generates_exactly_ten_and_persists_memory(tmp_path):
     saved = json.loads(memory.read_text(encoding="utf-8"))
     assert saved["cycle"] == 1 and len(saved["candidates"]) == 10
     assert len({c["id"] for c in result["candidates"]}) == 10
+    assert all(c["direction"] == "long" for c in result["candidates"])
     assert "performance" in saved and len(saved["performance"]) == 10
     for candidate in result["candidates"]:
         evaluation = candidate["evaluation"]
@@ -56,7 +57,7 @@ def test_test_segment_is_separate_from_validation():
     frame = sample_ohlcv(900)
     features = extract_features(frame)
     candidate = {"features": ["ema_5_raw", "rsi_14_raw", "pattern_doji"],
-                 "direction": "long_short", "threshold": 0.2, "holding_bars": 4}
+                 "direction": "long", "threshold": 0.2, "holding_bars": 4}
     result = _evaluate_candidate(candidate, features, frame["close"].iloc[:-1].reset_index(drop=True))
     points = result["split_points"]
     assert points["train_end"] == int((len(frame)-1) * 0.60)
