@@ -221,10 +221,14 @@ def _advanced_execution(candidate:dict[str,Any],features:pd.DataFrame,frame:pd.D
     """Conservative OHLC paper simulation with entry variants, bracket exits and costs."""
     if end-start<20:
         return {'trades':0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'trade_returns':[]}
+    n=min(len(frame),len(features))
+    frame=frame.iloc[:n].reset_index(drop=True)
+    features=features.iloc[:n].reset_index(drop=True)
+    start=max(0,min(int(start),n)); end=max(start,min(int(end),n))
     strength=_candidate_strength(candidate,features)
     close=frame['close'].to_numpy(float); high=frame['high'].to_numpy(float); low=frame['low'].to_numpy(float)
     open_=frame['open'].to_numpy(float)
-    atr=features.get('atr_14_raw',pd.Series(np.zeros(len(frame)))).to_numpy(float)*close
+    atr=features.get('atr_14_raw',pd.Series(np.zeros(n))).to_numpy(float)*close
     threshold=float(candidate.get('threshold',.5)); hold=int(candidate.get('holding_bars',12))
     method=candidate.get('entry_method','market'); policy=candidate.get('exit_policy','fixed_bracket')
     tp_mult=float(candidate.get('tp_atr',2.5)); sl_mult=float(candidate.get('sl_atr',1.5))
