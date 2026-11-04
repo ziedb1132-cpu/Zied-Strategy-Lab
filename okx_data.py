@@ -9,6 +9,7 @@ import pandas as pd
 
 BASE_URL = "https://www.okx.com/api/v5"
 COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
+SUPPORTED_BARS = ["1m","3m","5m","15m","30m","1H","2H","4H","6H","12H","1D","2D","3D","1W","1M"]
 
 def _request_candles(endpoint: str, params: dict[str, Any], timeout: int = 20) -> list[list[str]]:
     url = f"{BASE_URL}{endpoint}?{urlencode(params)}"
@@ -31,8 +32,8 @@ def fetch_okx_candles(inst_id: str = "BTC-USDT", bar: str = "1H", limit: int = 1
     """Fetch up to limit confirmed candles and return them oldest-first."""
     if not inst_id.endswith("-USDT") or not inst_id.replace("-", "").isalnum():
         raise ValueError("Only OKX Spot USDT instruments are supported, e.g. BTC-USDT.")
-    if not bar or len(bar) > 8:
-        raise ValueError("Invalid OKX candle interval.")
+    if bar not in SUPPORTED_BARS:
+        raise ValueError(f"Unsupported OKX candle interval: {bar}. Supported: {", ".join(SUPPORTED_BARS)}")
     if not 120 <= limit <= 10000:
         raise ValueError("Candle limit must be between 120 and 10000.")
     rows: dict[int, list[str]] = {}
