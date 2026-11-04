@@ -416,10 +416,12 @@ def evaluate_cross_asset_candidates(candidates:list[dict[str,Any]], frames:dict[
             close=clean['close']
             for candidate in candidates:
                 ev=_evaluate_candidate(candidate,features,close)
+                cross_validation=ev.get('validation',{})
                 results.setdefault(candidate['id'],{})[instrument]={
-                    'validation':ev.get('validation',{}),
-                    'status':ev.get('status','unknown'),
-                    'fitness':ev.get('fitness',-1.0)
+                    'validation':cross_validation,
+                    'status':'evaluated' if cross_validation.get('trades',0)>=MIN_QUALIFYING_TRADES else 'insufficient_sample',
+                    'fitness':ev.get('fitness',-1.0),
+                    'selection_basis':'validation_only'
                 }
         except Exception as exc:
             for candidate in candidates:
