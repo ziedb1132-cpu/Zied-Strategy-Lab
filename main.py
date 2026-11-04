@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import pandas as pd
 from okx_data import fetch_okx_candles, SUPPORTED_BARS
-from strategy_lab import discover_cycle
+from strategy_lab import discover_cycle, build_chart_payload
 from strategy_report import build_report
 
 
@@ -25,6 +25,7 @@ def main() -> None:
         parser.error("--csv can only be used with one --bar value.")
 
     runs = []
+    chart_payload = None
     for bar in bars:
         try:
             if args.csv:
@@ -42,7 +43,10 @@ def main() -> None:
             out = Path(args.out)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
-            report = build_report(args.memory, args.out)
+            chart_candidate = build_chart_payload(frame, args.memory, args.inst_id, bar)
+            if bar == "1H" or chart_payload is None:
+                chart_payload = chart_candidate
+            report = build_report(args.memory, args.out, chart_payload=chart_payload)
             runs.append({"bar": bar, "status": "completed", "cycle": result["cycle"],
                          "candles": len(frame), "strategies_generated": len(result["candidates"])})
             print(f"Cycle {result['cycle']} ({bar}) complete: {len(result['candidates'])} BUY candidates; "
@@ -60,7 +64,7 @@ def main() -> None:
     latest["all_timeframes"] = bars
     latest["data_source"]["bar"] = "ALL" if len(bars) > 1 else bars[0]
     Path(args.out).write_text(json.dumps(latest, indent=2, allow_nan=False), encoding="utf-8")
-    report = build_report(args.memory, args.out)
+    report = build_report(args.memory, args.out, chart_payload=chart_payload)
     print(f"Completed {len(bars)} timeframe(s); {report['strategies_discovered']} unique strategies in report.")
 
 
