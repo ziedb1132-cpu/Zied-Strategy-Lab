@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import pandas as pd
-from okx_data import fetch_okx_candles, SUPPORTED_BARS
+from okx_data import fetch_okx_candles, SUPPORTED_BARS, default_candle_count
 from strategy_lab import discover_cycle, build_chart_payload
 from strategy_report import build_report
 
@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("--csv", help="Optional local OHLCV CSV; when omitted, fetch candles from OKX.")
     parser.add_argument("--inst-id", default="SOL-USDT", help="OKX Spot USDT instrument, e.g. SOL-USDT.")
     parser.add_argument("--bar", default="ALL", help="Candle interval or ALL for every supported OKX interval.")
-    parser.add_argument("--candles", type=int, default=1500, help="Confirmed historical candles (120-10000).")
+    parser.add_argument("--candles", type=int, default=0, help="Confirmed historical candles; 0 selects the timeframe default.")
     parser.add_argument("--timeout", type=int, default=20)
     parser.add_argument("--memory", default="data/lab_memory.json")
     parser.add_argument("--out", default="data/latest_cycle.json")
@@ -33,10 +33,11 @@ def main() -> None:
                 source = {"type": "csv", "file": args.csv, "market": "spot",
                           "inst_id": args.inst_id, "bar": bar}
             else:
-                frame = fetch_okx_candles(args.inst_id, bar, args.candles, args.timeout)
+                requested_candles = args.candles if args.candles > 0 else default_candle_count(bar)
+                frame = fetch_okx_candles(args.inst_id, bar, requested_candles, args.timeout)
                 source = {"type": "okx_public_api", "exchange": "OKX", "market": "spot",
                           "inst_id": args.inst_id, "bar": bar,
-                          "candles_requested": args.candles, "candles_received": len(frame)}
+                          "candles_requested": requested_candles, "candles_received": len(frame)}
 
             result = discover_cycle(frame, memory_path=args.memory, candidate_count=10, timeframe=bar)
             result["data_source"] = source
