@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from okx_data import fetch_okx_candles, SUPPORTED_BARS
+from okx_data import fetch_okx_candles, SUPPORTED_BARS, default_candle_count
 from strategy_lab import FEATURE_CATALOG, CANDLE_PATTERNS, extract_features, discover_cycle
 
 
@@ -102,3 +102,18 @@ def test_strategy_memory_keeps_timeframes_separate(tmp_path):
     assert all(item["bar"] == "4H" for item in second["candidates"])
     assert saved["timeframe_cycles"] == {"1H": 1, "4H": 1}
     assert len(saved["performance"]) == 20
+
+
+def test_default_historical_windows_are_configured_for_all_bars():
+    counts = {bar: default_candle_count(bar) for bar in SUPPORTED_BARS}
+    assert counts["5m"] == 25920
+    assert counts["15m"] == 17280
+    assert counts["30m"] == 17520
+    assert counts["1H"] == 17520
+    assert counts["4H"] == 6570
+    assert counts["1D"] == 1825
+
+
+def test_qualification_requires_one_hundred_trades():
+    from strategy_lab import MIN_QUALIFYING_TRADES
+    assert MIN_QUALIFYING_TRADES == 100
