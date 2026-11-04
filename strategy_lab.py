@@ -381,3 +381,24 @@ def build_chart_payload(frame: pd.DataFrame, memory_path: str = "data/lab_memory
                                      "tp": entry + 3.0 * atr, "atr": atr}
     payload["status"] = "ready" if payload["levels"] else "no_recent_buy_signal"
     return payload
+
+
+def evaluate_cross_asset_candidates(candidates:list[dict[str,Any]], frames:dict[str,pd.DataFrame])->dict[str,dict[str,Any]]:
+    """Evaluate discovered candidates on other instruments; selection uses validation only."""
+    results={}
+    for instrument,frame in frames.items():
+        try:
+            clean=_clean(frame)
+            features=extract_features(frame)
+            close=clean['close']
+            for candidate in candidates:
+                ev=_evaluate_candidate(candidate,features,close)
+                results.setdefault(candidate['id'],{})[instrument]={
+                    'validation':ev.get('validation',{}),
+                    'status':ev.get('status','unknown'),
+                    'fitness':ev.get('fitness',-1.0)
+                }
+        except Exception as exc:
+            for candidate in candidates:
+                results.setdefault(candidate['id'],{})[instrument]={'status':'error','error':str(exc)}
+    return results
