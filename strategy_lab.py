@@ -413,6 +413,14 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
             sig=hashlib.sha1(json.dumps(cand,sort_keys=True).encode()).hexdigest()
             if sig not in seen: seen.add(sig); cand['id']=sig[:12]; candidates.append(cand); break
     for cand in candidates: cand['evaluation']=_evaluate_candidate(cand,features,close,_clean(frame))
+    validation_start=int(len(close)*.60); validation_end=int(len(close)*.80)
+    diversity=_correlation_diversity(candidates,features,validation_start,validation_end)
+    for cand in candidates:
+        cand['evaluation']['strategy_diversity']={
+            'average_absolute_correlation':diversity['average_absolute_correlation'],
+            'highly_correlated_pairs':diversity['highly_correlated_pairs'],
+            'pairs_involving_candidate':sum(1 for p in diversity['pairs'] if cand['id'] in (p['strategy_a'],p['strategy_b']))
+        }
     # Persistent, candidate-specific out-of-sample score history.
     performance=memory.setdefault('performance',{})
     for cand in candidates:
@@ -436,6 +444,7 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['last_advanced_execution']=ev.get('advanced_execution',{})
         stats['last_monte_carlo']=ev.get('monte_carlo',{})
         stats['last_confidence_score']=float(ev.get('confidence_score',0.0))
+        stats['last_strategy_diversity']=ev.get('strategy_diversity',{})
         stats['last_market_regimes']=ev.get('market_regimes',{})
         stats['last_robustness']=ev.get('robustness',{})
         rolling=stats.setdefault('rolling_test_history',[])
