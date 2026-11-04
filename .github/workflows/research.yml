@@ -21,9 +21,9 @@ on:
         required: true
         default: "ALL"
       candles:
-        description: "Confirmed historical candles (120-10000)"
+        description: "Confirmed historical candles; 0 = use the default historical window for selected timeframe"
         required: true
-        default: "1500"
+        default: "0"
 
 permissions:
   contents: write
@@ -55,7 +55,7 @@ jobs:
         env:
           INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'SOL-USDT' }}
           INPUT_BAR: ${{ github.event.inputs.bar || 'ALL' }}
-          INPUT_CANDLES: ${{ github.event.inputs.candles || '1500' }}
+          INPUT_CANDLES: ${{ github.event.inputs.candles || '0' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
