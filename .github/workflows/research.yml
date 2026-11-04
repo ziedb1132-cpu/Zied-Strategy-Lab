@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       inst_id:
-        description: "OKX Spot USDT instrument (example BTC-USDT)"
+        description: "OKX Spot USDT instrument (example SOL-USDT)"
         required: true
-        default: "BTC-USDT"
+        default: "SOL-USDT"
       bar:
         description: "Candle interval (5m, 15m, 1H, 4H, 1D)"
         required: true
@@ -43,7 +43,7 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Fetch OKX candles and evaluate 10 strategies
         env:
-          INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'BTC-USDT' }}
+          INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'SOL-USDT' }}
           INPUT_BAR: ${{ github.event.inputs.bar || '1H' }}
           INPUT_CANDLES: ${{ github.event.inputs.candles || '1500' }}
         run: |
