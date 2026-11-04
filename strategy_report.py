@@ -16,12 +16,46 @@ def _name(c: dict[str,Any], instrument: str) -> str:
         families.append(f.upper() if f in {"rsi","ema","sma","adx","atr","macd","obv"} else f.title())
     return instrument.replace("-"," ") + " Buy · " + (" + ".join(families) if families else "Multi-signal") + " · " + c.get("id","")
 
+def _feature_explanation(feature: str) -> str:
+    """Translate feature identifiers into short, non-technical Arabic."""
+    parts = feature.lower().split("_")
+    family = parts[0]
+    if family in {"ema", "sma"} and len(parts) >= 4 and parts[1] == "cross":
+        return f"تقارن متوسطَي {family.upper()} السريع والبطيء ({parts[2]} و{parts[3]}) لتقدير الاتجاه"
+    if family == "zscore":
+        period = next((p for p in parts[1:] if p.isdigit()), "")
+        return f"تقيس ابتعاد السعر عن مستواه المعتاد خلال {period or 'الفترة المحددة'}"
+    if family in {"rsi", "adx", "atr", "macd", "obv", "cci", "willr", "stoch"}:
+        return f"تستخدم مؤشر {family.upper()} لقياس الزخم أو الاتجاه أو التذبذب"
+    if family == "pattern":
+        return "ترصد نموذج شموع " + (parts[1].replace("-", " ").title() if len(parts) > 1 else "شموع") + " وسياقه"
+    if family in {"trend", "volatility", "volume"}:
+        return f"تستخدم بيانات {family} لتقدير حالة السوق"
+    if family in {"body", "upper", "lower", "close", "gap", "inside", "outside"}:
+        return "تحلل شكل الشمعة وموقع الإغلاق والظلال"
+    return "تحلل خاصية " + _label(feature) + " ضمن مجموعة المؤشرات"
+
 def _explain(c: dict[str,Any]) -> str:
-    features=", ".join(_label(x) for x in c.get("features",[]))
-    return (f"تجمع الاستراتيجية القيم المعيارية للخصائص: {features}. "
-            f"تفتح شراء فقط عندما يتجاوز متوسطها العتبة {float(c.get('threshold',0)):.3f}. "
-            f"مدة الاحتفاظ في الاختبار {int(c.get('holding_bars',0))} شموع. "
-            "لا توجد صفقات بيع؛ ويُحتسب أثر الرسوم والانزلاق السعري في العائد الصافي.")
+    features = c.get("features", [])
+    threshold = float(c.get("threshold", 0))
+    hold = int(c.get("holding_bars", 0))
+    feature_lines = "\n".join("• " + _label(x) + ": " + _feature_explanation(x) + "." for x in features)
+    names = ", ".join(_label(x) for x in features)
+    return (
+        "الفكرة\nتجمع الاستراتيجية عدة مؤشرات وخصائص للسوق في درجة واحدة؛ ولا يشترط أن يعطي كل مؤشر إشارة شراء منفردة.\n\n"
+        "شروط BUY\n"
+        f"1. يحسب المختبر متوسط القيم المعيارية لهذه الخصائص: {names}.\n"
+        f"2. يقارن الدرجة بالعتبة {threshold:.3f}.\n"
+        f"3. يسجل شراء عندما تتجاوز الدرجة {threshold:.3f}؛ وما دون ذلك لا يفتح صفقة.\n\n"
+        "ماذا تقيس الخصائص؟\n" + feature_lines + "\n\n"
+        "الخروج من الصفقة\n"
+        f"في الاختبار الحالي، يتم الخروج بعد {hold} شموع من الدخول بسعر إغلاق الشمعة المحددة.\n"
+        "لا توجد إشارة SELL مستقلة، ولا يُستخدم TP أو SL في احتساب نتيجة هذا الاختبار.\n\n"
+        "إدارة المخاطر\n"
+        "لم يختبر هذا النموذج وقف خسارة أو جني أرباح؛ لذلك لا تعتبر خطوط TP/SL في الرسم جزءاً من نتيجة الاختبار. تُخصم تكلفة تداول تقديرية قدرها 30 نقطة أساس ذهاباً وإياباً.\n\n"
+        f"الفريم الزمني: {c.get('bar', 'غير محدد')}.\n"
+        f"مثال مبسّط: إذا تجاوزت الدرجة {threshold:.3f} عند إغلاق شمعة مكتملة، يسجل المختبر دخول شراء؛ ثم يقيس النتيجة بعد {hold} شموع. هذا مثال توضيحي وليس توصية تداول."
+    )
 
 def _rating(s: dict[str, Any]) -> float:
     """Bounded 0-100 ranking score for strategies that passed validation and test."""
@@ -112,7 +146,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
 .number{font-size:30px;font-weight:750;direction:ltr;text-align:right}.list{display:grid;gap:12px}.strategy h3{margin:0 0 8px;font-size:17px}
 .meta{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.tag{background:#eef2f7;border-radius:20px;padding:3px 10px;font-size:12px}
 .good{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}
-.metric{background:#f8fafc;border-radius:9px;padding:8px}.metric small{display:block;color:var(--muted)}button{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 12px;cursor:pointer}
+.metric{background:#f8fafc;border-radius:9px;padding:8px}.explain{white-space:pre-line;line-height:1.9;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}.metric small{display:block;color:var(--muted)}button{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 12px;cursor:pointer}
 @media(max-width:600px){main{padding:14px}h1{font-size:21px}}
 </style></head><body><main><div class="top"><div><h1>مختبر استراتيجيات Zied</h1><div class="muted" id="subtitle">تقرير جميع الفريمات — شراء فقط</div></div><button onclick="loadReport()">تحديث التقرير</button></div>
 <div class="cards"><div class="card"><div class="muted">الاستراتيجيات المكتشفة</div><div class="number" id="discovered">—</div></div><div class="card"><div class="muted">استراتيجيات الشراء الناجحة</div><div class="number good" id="successful">—</div></div><div class="card"><div class="muted">الاستراتيجيات المعكوسة / البيع</div><div class="number" id="inverted">0</div></div><div class="card"><div class="muted">رقم الدورة</div><div class="number" id="cycle">—</div></div></div>
@@ -125,7 +159,7 @@ document.getElementById('discovered').textContent=d.strategies_discovered;docume
 document.getElementById('inverted').textContent=d.inverted_strategies;document.getElementById('cycle').textContent=d.cycle;
 document.getElementById('subtitle').textContent=d.instrument+' · '+(d.timeframes||[d.bar]).join(' / ')+' · شراء فقط';
 document.getElementById('updated').textContent='آخر تحديث: '+new Date(d.updated_at).toLocaleString('ar-TN')+' — '+d.success_rule;
-box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':'لم تجتز شروط النجاح')+'</span></div><p>'+esc(s.explanation)+'</p><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
+box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':'لم تجتز شروط النجاح')+'</span></div><div class="explain">'+esc(s.explanation)+'</div><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
 }catch(e){box.textContent='تعذر تحميل التقرير: '+e.message+' — تحقق من وجود strategy_report.json بجانب الصفحة.'}}
 loadReport();setInterval(loadReport,60000);
 </script></body></html>'''
