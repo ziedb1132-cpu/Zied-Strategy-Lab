@@ -51,6 +51,30 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Rebase each saved research commit onto the latest main before pushing.
+          # Retry in case another writer updates main between fetch and push.
+          push_research_commit() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              echo "Syncing research commit with origin/main (attempt $attempt/5)"
+              git fetch origin main
+              if ! git rebase origin/main; then
+                echo "::error::Rebase conflict while saving research data. Local research commit was not force-pushed."
+                git rebase --abort || true
+                return 1
+              fi
+              if git push origin HEAD:main; then
+                echo "Research state saved successfully."
+                return 0
+              fi
+              echo "Push rejected because main moved; fetching and retrying."
+              sleep "$attempt"
+            done
+            echo "::error::Could not push research state after 5 attempts."
+            return 1
+          }
+
           for cycle in $(seq 1 200); do
             echo "========== Batch cycle $cycle / 200 =========="
             python scripts/split_large_data.py restore
@@ -59,7 +83,7 @@ jobs:
             git add -A data/
             if ! git diff --cached --quiet; then
               git commit -m "Strategy Lab cycle ${cycle}/200 [skip ci]"
-              git push origin HEAD:main
+              push_research_commit
             else
               echo "No changed research files in this cycle."
             fi
