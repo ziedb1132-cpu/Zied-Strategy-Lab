@@ -45,7 +45,7 @@ def fetch_okx_candles(inst_id: str = "BTC-USDT", bar: str = "1H", limit: int = 1
     while len(rows) < limit:
         oldest = min(rows)
         page = _request_candles("/market/history-candles", {
-            "instId": inst_id, "bar": bar, "after": str(oldest), "limit": min(300, limit-len(rows))
+            "instId": inst_id, "bar": bar, "after": str(oldest), "limit": min(100, limit-len(rows))
         }, timeout)
         if not page:
             break
