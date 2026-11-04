@@ -68,13 +68,18 @@ def _rating(s: dict[str, Any]) -> float:
     sample = clamp(min(int(s.get("test_trades", 0)), int(s.get("validation_trades", 0))) / 40.0)
     drawdown = clamp(1.0 - abs(float(s.get("test_max_drawdown", 0.0))) / 0.20)
     expectancy = clamp(0.5 + float(s.get("test_net_mean_return", 0.0)) * 25.0)
+    confidence = clamp(float(s.get("confidence_score", 0.0)) / 100.0)
+    correlation = clamp(float(s.get("strategy_diversity", {}).get("average_absolute_correlation", 0.0)))
+    diversity = 1.0 - correlation
     score = (
-        30.0 * (0.70 * test_return + 0.30 * validation_return)
-        + 20.0 * (0.70 * test_pf + 0.30 * validation_pf)
-        + 15.0 * win_rate
-        + 10.0 * sample
-        + 15.0 * drawdown
-        + 10.0 * expectancy
+        25.0 * (0.70 * test_return + 0.30 * validation_return)
+        + 15.0 * (0.70 * test_pf + 0.30 * validation_pf)
+        + 12.0 * win_rate
+        + 8.0 * sample
+        + 12.0 * drawdown
+        + 8.0 * expectancy
+        + 15.0 * confidence
+        + 5.0 * diversity
     )
     return round(score, 2)
 
@@ -112,6 +117,8 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
             "rolling_test_history":stats.get("rolling_test_history",[]),
             "confidence_score":float(stats.get("last_confidence_score",0)),
             "advanced_execution":stats.get("last_advanced_execution",{}),
+            "advanced_execution_fitness":float(stats.get("last_advanced_execution_fitness",0)),
+            "advanced_validation":stats.get("last_advanced_validation",{}),
             "monte_carlo":stats.get("last_monte_carlo",{}),
             "strategy_diversity":stats.get("last_strategy_diversity",{}),
             "successful":bool(stats.get("successful",False))
