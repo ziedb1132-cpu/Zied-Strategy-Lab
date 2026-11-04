@@ -33,7 +33,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         if c.get("direction")!="long":
             continue
         strategies.append({
-            "id":sid,"name":_name(c, latest.get("data_source",{}).get("inst_id","SOL-USDT")),"explanation":_explain(c),"direction":"BUY","inverted":False,
+            "id":sid,"bar":c.get("bar","1H"),"name":_name(c, latest.get("data_source",{}).get("inst_id","SOL-USDT"))+" · "+c.get("bar","1H"),"explanation":_explain(c)+" الفريم المستخدم: "+c.get("bar","1H")+".","direction":"BUY","inverted":False,
             "features":c.get("features",[]),"threshold":c.get("threshold"),"holding_bars":c.get("holding_bars"),
             "cycles_seen":int(stats.get("cycles_seen",0)),
             "validation_trades":int(stats.get("last_validation_trades",0)),
@@ -50,6 +50,8 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         "updated_at":datetime.now(timezone.utc).isoformat(),
         "instrument":latest.get("data_source",{}).get("inst_id","SOL-USDT"),
         "bar":latest.get("data_source",{}).get("bar","1H"),
+        "timeframes":latest.get("all_timeframes",[latest.get("data_source",{}).get("bar","1H")]),
+        "timeframe_cycles":memory.get("timeframe_cycles",{}),
         "cycle":int(memory.get("cycle",latest.get("cycle",0))),
         "strategies_discovered":len(strategies),
         "successful_buy_strategies":sum(1 for s in strategies if s["successful"]),
@@ -70,7 +72,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
 .good{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}
 .metric{background:#f8fafc;border-radius:9px;padding:8px}.metric small{display:block;color:var(--muted)}button{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 12px;cursor:pointer}
 @media(max-width:600px){main{padding:14px}h1{font-size:21px}}
-</style></head><body><main><div class="top"><div><h1>مختبر استراتيجيات Zied</h1><div class="muted" id="subtitle">تقرير الاستراتيجيات — شراء فقط</div></div><button onclick="loadReport()">تحديث التقرير</button></div>
+</style></head><body><main><div class="top"><div><h1>مختبر استراتيجيات Zied</h1><div class="muted" id="subtitle">تقرير جميع الفريمات — شراء فقط</div></div><button onclick="loadReport()">تحديث التقرير</button></div>
 <div class="cards"><div class="card"><div class="muted">الاستراتيجيات المكتشفة</div><div class="number" id="discovered">—</div></div><div class="card"><div class="muted">استراتيجيات الشراء الناجحة</div><div class="number good" id="successful">—</div></div><div class="card"><div class="muted">الاستراتيجيات المعكوسة / البيع</div><div class="number" id="inverted">0</div></div><div class="card"><div class="muted">رقم الدورة</div><div class="number" id="cycle">—</div></div></div>
 <p class="muted" id="updated"></p><div class="list" id="strategies">جارٍ تحميل البيانات…</div></main>
 <script>
@@ -79,7 +81,7 @@ async function loadReport(){var box=document.getElementById('strategies');try{
 var r=await fetch('./strategy_report.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);var d=await r.json();
 document.getElementById('discovered').textContent=d.strategies_discovered;document.getElementById('successful').textContent=d.successful_buy_strategies;
 document.getElementById('inverted').textContent=d.inverted_strategies;document.getElementById('cycle').textContent=d.cycle;
-document.getElementById('subtitle').textContent=d.instrument+' · '+d.bar+' · شراء فقط';
+document.getElementById('subtitle').textContent=d.instrument+' · '+(d.timeframes||[d.bar]).join(' / ')+' · شراء فقط';
 document.getElementById('updated').textContent='آخر تحديث: '+new Date(d.updated_at).toLocaleString('ar-TN')+' — '+d.success_rule;
 box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':'لم تجتز شروط النجاح')+'</span></div><p>'+esc(s.explanation)+'</p><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
 }catch(e){box.textContent='تعذر تحميل التقرير: '+e.message+' — تحقق من وجود strategy_report.json بجانب الصفحة.'}}
