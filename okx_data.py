@@ -9,7 +9,7 @@ import pandas as pd
 
 BASE_URL = "https://www.okx.com/api/v5"
 COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
-SUPPORTED_BARS = ["1m","3m","5m","15m","30m","1H","2H","4H","6H","12H","1D","2D","3D","1W","1M"]
+SUPPORTED_BARS = ["1s","1m","3m","5m","15m","30m","1H","2H","4H","6H","12H","1D","2D","3D","1W","1M","3M","6Hutc","12Hutc","1Dutc","2Dutc","3Dutc","1Wutc","1Mutc","3Mutc"]
 
 def _request_candles(endpoint: str, params: dict[str, Any], timeout: int = 20) -> list[list[str]]:
     url = f"{BASE_URL}{endpoint}?{urlencode(params)}"
