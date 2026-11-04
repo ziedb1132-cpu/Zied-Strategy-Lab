@@ -8,9 +8,9 @@ on:
         required: true
         default: "SOL-USDT"
       bar:
-        description: "Candle interval"
+        description: "Candle interval (ALL = every supported OKX timeframe)"
         required: true
-        default: "1H"
+        default: "ALL"
       candles:
         description: "Confirmed historical candles (120-10000)"
         required: true
@@ -43,7 +43,7 @@ jobs:
       - name: Run 200 sequential research cycles and save every cycle
         env:
           INPUT_INST_ID: ${{ github.event.inputs.inst_id || 'SOL-USDT' }}
-          INPUT_BAR: ${{ github.event.inputs.bar || '1H' }}
+          INPUT_BAR: ${{ github.event.inputs.bar || 'ALL' }}
           INPUT_CANDLES: ${{ github.event.inputs.candles || '1500' }}
         run: |
           set -euo pipefail
