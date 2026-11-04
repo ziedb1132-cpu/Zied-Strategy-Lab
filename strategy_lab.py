@@ -158,7 +158,7 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     win=float((arr>0).mean()) if len(arr) else 0.0
     net=float(arr.mean()) if len(arr) else 0.0
     gross_mean=float((arr+fee).mean()) if len(arr) else 0.0
-    pf=float(wins.sum()/abs(losses.sum())) if len(losses) and abs(losses.sum())>0 else (float('inf') if len(wins) else 0.0)
+    pf=float(wins.sum()/abs(losses.sum())) if len(losses) and abs(losses.sum())>0 else (999.0 if len(wins) else 0.0)
     # Cost-aware fitness; slight penalty for too few observations.
     fitness=net*100+.12*(win-.5)-.03/max(len(arr),1)
     return {'trades':int(len(arr)),'gross_mean_return':gross_mean,'net_mean_return':net,'win_rate':win,'profit_factor':pf,'fitness':float(fitness),'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
