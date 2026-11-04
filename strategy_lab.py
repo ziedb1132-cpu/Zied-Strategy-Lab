@@ -144,8 +144,14 @@ def extract_features(frame:pd.DataFrame)->pd.DataFrame:
 
 def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dict[str,Any]:
     rng=random.Random(seed); selected=[]
-    if prior and rng.random()<.45:
-        selected=[x for x in rng.choice(prior[:30]).get('features',[]) if x in available][:rng.randint(3,8)]
+    # Genetic crossover: inherit feature subsets from two high-ranked parents.
+    if prior and rng.random()<.70:
+        parent_a=rng.choice(prior[:30])
+        selected=[x for x in parent_a.get('features',[]) if x in available][:rng.randint(2,6)]
+        if len(prior)>1 and rng.random()<.75:
+            parent_b=rng.choice(prior[:30])
+            inherited=[x for x in parent_b.get('features',[]) if x in available and x not in selected]
+            selected.extend(inherited[:rng.randint(1,4)])
     pool=[x for x in available if x not in selected]
     if pool: selected+=rng.sample(pool,k=min(rng.randint(4,10),len(pool)))
     parent_threshold=float(rng.choice(prior[:30]).get('threshold',0.5)) if prior and rng.random()<0.65 else rng.uniform(.2,.8)
@@ -246,13 +252,16 @@ def _advanced_execution(candidate:dict[str,Any],features:pd.DataFrame,frame:pd.D
         for j in range(i+1,min(i+hold+1,end)):
             peak=max(peak,high[j])
             if policy=='trailing':
-                stop=max(stop,peak-1.5*atr[i])
+                stop=max(stop,peak-sl_mult*atr[i])
             elif policy=='adaptive_bracket':
-                # Volatility-aware bracket; the initial levels remain fixed for the trade.
-                target=entry+tp_mult*atr[i]
+                current_atr=atr[j] if np.isfinite(atr[j]) and atr[j]>0 else atr[i]
+                stop=max(stop,peak-sl_mult*current_atr)
+                target=entry+tp_mult*current_atr
+            if policy=='time_exit':
+                continue
             hit_sl=low[j]<=stop; hit_tp=high[j]>=target
             if hit_sl:  # If both are touched in one candle, assume the adverse stop happens first.
-                exit_price=stop; exit_index=j; exit_reason='trailing_stop' if policy=='trailing' else 'stop_loss'; break
+                exit_price=stop; exit_index=j; exit_reason='trailing_stop' if policy in {'trailing','adaptive_bracket'} else 'stop_loss'; break
             if hit_tp:
                 exit_price=target; exit_index=j; exit_reason='take_profit'; break
         gross=exit_price/entry-1.0 if entry>0 else 0.0
@@ -274,14 +283,20 @@ def _monte_carlo(trade_returns:list[float],seed:int=17,simulations:int=1000)->di
     arr=np.asarray(trade_returns,dtype=float)
     if len(arr)<5:
         return {'simulations':0,'risk_of_ruin':None,'median_return':None,'p05_return':None,'p95_return':None}
-    rng=np.random.default_rng(seed); outcomes=[]
+    rng=np.random.default_rng(seed); outcomes=[]; drawdowns=[]
     for _ in range(simulations):
         shuffled=rng.permutation(arr)
-        outcomes.append(float(np.prod(1+shuffled)-1))
-    vals=np.asarray(outcomes)
-    return {'simulations':simulations,'risk_of_ruin':float((vals<=-.20).mean()),
+        equity=np.cumprod(1.0+shuffled)
+        path=np.r_[1.0,equity]
+        peak=np.maximum.accumulate(path)
+        max_dd=float(np.min(path/peak-1.0))
+        outcomes.append(float(equity[-1]-1.0))
+        drawdowns.append(max_dd)
+    vals=np.asarray(outcomes); dds=np.asarray(drawdowns)
+    return {'simulations':simulations,'risk_of_ruin':float(((vals<=-.20)|(dds<=-.20)).mean()),
             'median_return':float(np.median(vals)),'p05_return':float(np.quantile(vals,.05)),
-            'p95_return':float(np.quantile(vals,.95))}
+            'p95_return':float(np.quantile(vals,.95)),'median_max_drawdown':float(np.median(dds)),
+            'p95_max_drawdown':float(np.quantile(dds,.05))}
 
 
 def _confidence_score(validation:dict[str,Any],walk_forward:dict[str,Any],robustness:dict[str,Any],
