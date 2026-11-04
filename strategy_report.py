@@ -90,7 +90,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
             "cycles_seen":int(stats.get("cycles_seen",0)),
             "validation_trades":int(stats.get("last_validation_trades",0)),
             "test_trades":int(stats.get("last_test_trades",0)),
-            "sample_status":"insufficient_sample" if min(int(stats.get("last_validation_trades",0)),int(stats.get("last_test_trades",0))) < 100 else "sample_sufficient",
+            "sample_status":"insufficient_sample" if min(int(stats.get("last_validation_trades",0)),int(stats.get("last_test_trades",0))) < 40 else "sample_sufficient",
             "validation_net_total_return":float(stats.get("last_validation_net_total_return",0)),
             "test_net_total_return":float(stats.get("last_test_net_total_return",0)),
             "validation_profit_factor":float(stats.get("last_validation_profit_factor",0)),
@@ -109,12 +109,12 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         "timeframe_cycles":memory.get("timeframe_cycles",{}),
         "timeframe_runs":latest.get("timeframe_runs",[]),
         "cycle":int(memory.get("cycle",latest.get("cycle",0))),
-        "minimum_trades_for_qualification":100,
+        "minimum_trades_for_qualification":40,
         "strategies_discovered":len(strategies),
         "successful_buy_strategies":sum(1 for s in strategies if s["successful"]),
         "inverted_strategies":0,"direction_policy":"BUY_ONLY",
-        "minimum_trades_for_qualification":100,
-        "success_rule":"Validation and test each require at least 100 trades, positive net total return, and profit factor > 1 after estimated costs. Below 100 trades is insufficient sample, not proof of failure.",
+        "minimum_trades_for_qualification":40,
+        "success_rule":"Validation and test each require at least 40 trades, positive net total return, and profit factor > 1 after estimated costs. Below 40 trades is insufficient sample, not proof of failure.",
         "strategies":strategies
     }
     Path(json_path).parent.mkdir(parents=True,exist_ok=True)
@@ -162,7 +162,7 @@ document.getElementById('discovered').textContent=d.strategies_discovered;docume
 document.getElementById('inverted').textContent=d.inverted_strategies;document.getElementById('cycle').textContent=d.cycle;
 document.getElementById('subtitle').textContent=d.instrument+' · '+(d.timeframes||[d.bar]).join(' / ')+' · شراء فقط';
 document.getElementById('updated').textContent='آخر تحديث: '+new Date(d.updated_at).toLocaleString('ar-TN')+' — '+d.success_rule;
-box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':(s.sample_status==='insufficient_sample'?'عينة غير كافية (أقل من 100 صفقة)':'لم تجتز شروط النجاح'))+'</span></div><div class="explain">'+esc(s.explanation)+'</div><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
+box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':(s.sample_status==='insufficient_sample'?'عينة غير كافية (أقل من 40 صفقة)':'لم تجتز شروط النجاح'))+'</span></div><div class="explain">'+esc(s.explanation)+'</div><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
 }catch(e){box.textContent='تعذر تحميل التقرير: '+e.message+' — تحقق من وجود strategy_report.json بجانب الصفحة.'}}
 loadReport();setInterval(loadReport,60000);
 </script></body></html>'''
