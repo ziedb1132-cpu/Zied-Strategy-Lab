@@ -14,8 +14,12 @@ An independent research sandbox; separate from `Zied-`. It does not send live OK
 ```bash
 pip install -r requirements.txt
 python main.py --csv path/to/ohlcv.csv
-``
+```
+
 CSV columns: `open, high, low, close, volume`; optional `timestamp` sorts the data. Results: `data/latest_cycle.json`; memory: `data/lab_memory.json`.
+
+## Automated checks
+GitHub Actions compiles the Python files and runs the test suite on pushes, pull requests, and manual dispatches.
 
 ## Evaluation caveats
 Current costs are configurable constants (20 bps round-trip fee plus 5 bps slippage per side by default), not live exchange-specific fee tiers. The baseline evaluator uses fixed holding-period returns; it does not yet model OHLC stop/target execution, partial fills, funding, liquidity constraints, or portfolio interactions. Results are research metrics, not forecasts or trade recommendations.
