@@ -23,6 +23,24 @@ def _explain(c: dict[str,Any]) -> str:
             f"مدة الاحتفاظ في الاختبار {int(c.get('holding_bars',0))} شموع. "
             "لا توجد صفقات بيع؛ ويُحتسب أثر الرسوم والانزلاق السعري في العائد الصافي.")
 
+def _rating(s: dict[str, Any]) -> float:
+    """Bounded 0-100 ranking score for strategies that passed validation and test."""
+    clamp = lambda x: max(0.0, min(1.0, float(x)))
+    test_return = clamp(float(s.get("test_net_total_return", 0.0)) / 0.10)
+    validation_return = clamp(float(s.get("validation_net_total_return", 0.0)) / 0.10)
+    test_pf = clamp((min(float(s.get("test_profit_factor", 0.0)), 3.0) - 1.0) / 2.0)
+    validation_pf = clamp((min(float(s.get("validation_profit_factor", 0.0)), 3.0) - 1.0) / 2.0)
+    win_rate = clamp(float(s.get("test_win_rate", 0.0)))
+    sample = clamp(min(int(s.get("test_trades", 0)), int(s.get("validation_trades", 0))) / 30.0)
+    score = (
+        40.0 * (0.70 * test_return + 0.30 * validation_return)
+        + 25.0 * (0.70 * test_pf + 0.30 * validation_pf)
+        + 20.0 * win_rate
+        + 15.0 * sample
+    )
+    return round(score, 2)
+
+
 def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cycle.json",
                  json_path="data/strategy_report.json", html_path="data/strategy_report.html"):
     memory=json.loads(Path(memory_path).read_text(encoding="utf-8"))
@@ -45,7 +63,9 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
             "test_win_rate":float(stats.get("test_win_rate",0)),
             "successful":bool(stats.get("successful",False))
         })
-    strategies.sort(key=lambda s:(s["successful"],s["test_net_total_return"],s["test_profit_factor"]),reverse=True)
+    for strategy in strategies:
+        strategy["rating"] = _rating(strategy) if strategy["successful"] else 0.0
+    strategies.sort(key=lambda s:(s["successful"],s["rating"],s["test_net_total_return"],s["test_profit_factor"]),reverse=True)
     report={
         "updated_at":datetime.now(timezone.utc).isoformat(),
         "instrument":latest.get("data_source",{}).get("inst_id","SOL-USDT"),
@@ -68,10 +88,15 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         "cycle": report["cycle"],
         "strategies_discovered": report["strategies_discovered"],
         "successful_buy_strategies": report["successful_buy_strategies"],
+        # Only the 20 highest-rated strategies that passed BOTH validation and test.
         "strategies": [
-            {"id": s["id"], "name": s["name"], "explanation": s["explanation"]}
+            {"id": s["id"], "name": s["name"], "explanation": s["explanation"],
+             "rating": s["rating"], "test_net_total_return": s["test_net_total_return"],
+             "validation_net_total_return": s["validation_net_total_return"],
+             "test_profit_factor": s["test_profit_factor"], "test_win_rate": s["test_win_rate"],
+             "test_trades": s["test_trades"], "validation_trades": s["validation_trades"]}
             for s in strategies if s["successful"]
-        ]
+        ][:20]
     }
     Path("data/dashboard_summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, separators=(",", ":"), allow_nan=False),
