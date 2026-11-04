@@ -194,10 +194,8 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     strength=normalized.mean(axis=1).to_numpy()
     threshold=float(candidate['threshold'])
     signal=np.where(strength>threshold,1,np.where(strength<-threshold,-1,0))
-    if candidate['direction']=='long':
-        signal=np.maximum(signal,0)
-    elif candidate['direction']=='short':
-        signal=np.minimum(signal,0)
+    # Buy-only lab: bearish-strength values are ignored, never converted to short trades.
+    signal=np.maximum(signal,0)
     # Chronological 60/20/20 split. The test segment is never used for fitness.
     train_end=int(n*.60); validation_end=int(n*.80)
     train=_segment_metrics(signal,close,0,train_end,hold)
