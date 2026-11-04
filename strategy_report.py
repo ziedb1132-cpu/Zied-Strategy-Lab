@@ -52,6 +52,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         "bar":latest.get("data_source",{}).get("bar","1H"),
         "timeframes":latest.get("all_timeframes",[latest.get("data_source",{}).get("bar","1H")]),
         "timeframe_cycles":memory.get("timeframe_cycles",{}),
+        "timeframe_runs":latest.get("timeframe_runs",[]),
         "cycle":int(memory.get("cycle",latest.get("cycle",0))),
         "strategies_discovered":len(strategies),
         "successful_buy_strategies":sum(1 for s in strategies if s["successful"]),
