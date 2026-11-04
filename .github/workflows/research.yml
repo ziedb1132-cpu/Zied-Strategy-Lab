@@ -53,8 +53,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for cycle in $(seq 1 200); do
             echo "========== Batch cycle $cycle / 200 =========="
+            python scripts/split_large_data.py restore
             python main.py --inst-id "$INPUT_INST_ID" --bar "$INPUT_BAR" --candles "$INPUT_CANDLES"
-            git add data/lab_memory.json data/latest_cycle.json data/strategy_report.json data/strategy_report.html
+            python scripts/split_large_data.py split
+            git add -A data/
             if ! git diff --cached --quiet; then
               git commit -m "Strategy Lab cycle ${cycle}/200 [skip ci]"
               git push origin HEAD:main
