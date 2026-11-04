@@ -136,7 +136,10 @@ def extract_features(frame:pd.DataFrame)->pd.DataFrame:
     f['candle_upper_wick_ratio']=(h-pd.concat([o,c],axis=1).max(axis=1))/(h-l+1e-12); f['candle_lower_wick_ratio']=(pd.concat([o,c],axis=1).min(axis=1)-l)/(h-l+1e-12)
     f['candle_bullish']=(c>o).astype(int); f['candle_bearish']=(c<o).astype(int)
     f=pd.concat([f,_candlestick_features(o,h,l,c,v)],axis=1)
-    return f.replace([np.inf,-np.inf],np.nan).fillna(0)
+    # Normalize every feature to a numeric dtype; mixed bool/int/float columns
+    # otherwise produce an object array that NumPy cannot validate with isfinite.
+    f = f.apply(pd.to_numeric, errors='coerce')
+    return f.replace([np.inf,-np.inf],np.nan).fillna(0).astype(float)
 
 def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dict[str,Any]:
     rng=random.Random(seed); selected=[]
