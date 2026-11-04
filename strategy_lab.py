@@ -184,10 +184,10 @@ def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hol
 def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series)->dict[str,Any]:
     cols=[x for x in candidate['features'] if x in features.columns]
     n=len(close); hold=int(candidate['holding_bars'])
+    empty={'trades':0,'gross_mean_return':0.0,'net_mean_return':0.0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
     if not cols or n<max(120,hold*6):
-        empty={'trades':0,'gross_mean_return':0.0,'net_mean_return':0.0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
         return {'train':empty,'validation':empty,'test':empty,'fitness':-1.0,'status':'insufficient_history'}
-    # Causal rolling normalization: each row uses only that row and its past.
+    # Causal rolling normalization: every row uses only its own and prior observations.
     x=features[cols].astype(float)
     means=x.rolling(100,min_periods=30).mean()
     std=x.rolling(100,min_periods=30).std()
@@ -195,23 +195,58 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     strength=normalized.mean(axis=1).to_numpy()
     threshold=float(candidate['threshold'])
     signal=np.where(strength>threshold,1,np.where(strength<-threshold,-1,0))
-    # Buy-only lab: bearish-strength values are ignored, never converted to short trades.
-    signal=np.maximum(signal,0)
-    # Chronological 60/20/20 split. The test segment is never used for fitness.
+    signal=np.maximum(signal,0)  # BUY-only; bearish values never become shorts.
     train_end=int(n*.60); validation_end=int(n*.80)
     train=_segment_metrics(signal,close,0,train_end,hold)
     validation=_segment_metrics(signal,close,train_end,validation_end,hold)
     test=_segment_metrics(signal,close,validation_end,n,hold)
-    # Prefer validation net expectancy; penalize tiny samples and severe drawdown.
+
+    # Walk-forward validation: four chronological, non-overlapping validation windows.
+    # The final 20% test segment is intentionally excluded from all selection metrics.
+    fold_metrics=[]
+    validation_span=validation_end-train_end
+    for fold in range(4):
+        a=train_end+(validation_span*fold)//4
+        b=train_end+(validation_span*(fold+1))//4
+        fold_metrics.append(_segment_metrics(signal,close,a,b,hold))
+    valid_folds=[m for m in fold_metrics if m['trades']>0]
+    wf_mean=float(np.mean([m['net_mean_return'] for m in valid_folds])) if valid_folds else 0.0
+    wf_positive=sum(1 for m in valid_folds if m['net_total_return']>0)
+
+    # Market regime diagnostics, derived from causal trend and volatility features.
+    trend=features.get('trend_regime_50',pd.Series(0.0,index=features.index)).to_numpy()
+    vol=features.get('atr_14_raw',pd.Series(0.0,index=features.index)).to_numpy()
+    vol_median=pd.Series(vol).rolling(100,min_periods=30).median().fillna(pd.Series(vol).expanding().median()).to_numpy()
+    regimes=np.where(trend>0.003,'bull',np.where(trend<-0.003,'bear','sideways'))
+    regimes=np.char.add(regimes.astype(str),np.where(vol>vol_median,'_high_vol','_normal_vol'))
+    regime_metrics={}
+    for regime in sorted(set(regimes[train_end:validation_end])):
+        mask=(regimes==regime)
+        regime_signal=np.where(mask,signal,0)
+        regime_metrics[str(regime)]=_segment_metrics(regime_signal,close,train_end,validation_end,hold)
+
+    # Robustness: small threshold perturbations, measured on validation only.
+    robustness=[]
+    for factor in (0.90,1.0,1.10):
+        robust_signal=(strength>threshold*factor).astype(int)
+        robustness.append(_segment_metrics(robust_signal,close,train_end,validation_end,hold))
+    robust_positive=sum(1 for m in robustness if m['net_total_return']>0)
+    robust_mean=float(np.mean([m['net_mean_return'] for m in robustness]))
+
     sample_penalty=0.03/max(validation['trades'],1)
-    fitness=(validation['net_mean_return']*100
+    fitness=(0.65*validation['net_mean_return']*100
+             +0.35*wf_mean*100
              +0.12*(validation['win_rate']-.5)
              -0.10*abs(validation['max_drawdown'])
              -sample_penalty) if validation['trades'] else -1.0
     status='evaluated' if validation['trades']>=MIN_QUALIFYING_TRADES and test['trades']>=MIN_QUALIFYING_TRADES else 'insufficient_sample'
     return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
+            'walk_forward':{'folds':fold_metrics,'folds_with_trades':len(valid_folds),'positive_folds':wf_positive,'mean_net_return':wf_mean},
+            'market_regimes':regime_metrics,
+            'robustness':{'threshold_factors':[0.90,1.0,1.10],'runs':robustness,'positive_runs':robust_positive,'mean_net_return':robust_mean},
+            'quality_score':float(max(0.0,min(100.0,50+fitness*100))),
             'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
-            'fitness_basis':'validation_only', 'minimum_trades_for_qualification': MIN_QUALIFYING_TRADES}
+            'fitness_basis':'validation_only','minimum_trades_for_qualification':MIN_QUALIFYING_TRADES}
 
 def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',candidate_count:int=10,timeframe:str='1H')->dict[str,Any]:
     if candidate_count!=10: raise ValueError('Exactly 10 strategies are generated per cycle.')
