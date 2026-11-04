@@ -79,7 +79,11 @@ def _candlestick_features(o:pd.Series,h:pd.Series,l:pd.Series,c:pd.Series,v:pd.S
     f['pattern_dark_cloud_cover']=(bull.shift(1)&bear&(o>h.shift())&(c<midpoint)&(c>o.shift())).astype(int)
     f['pattern_counterattack']=((bull&bear.shift(1))|(bear&bull.shift(1)))&((c-c.shift()).abs()/(c+1e-12)<.001)
     f['pattern_kicking']=((bull&bear.shift(1)&(o>h.shift()))|(bear&bull.shift(1)&(o<l.shift()))).astype(int)
-    f['pattern_separating_lines']=((bull&bear.shift(1)&(o-o.shift()).abs()/(c+1e-12)<.002)|(bear&bull.shift(1)&(o-o.shift()).abs()/(c+1e-12)<.002)
+    open_gap_small = ((o - o.shift()).abs() / (c.abs() + 1e-12)) < 0.002
+    f['pattern_separating_lines'] = (
+        (bull & bear.shift(1) & open_gap_small)
+        | (bear & bull.shift(1) & open_gap_small)
+    ).astype(int)
     # Multi-bar reversals/continuations use prior candle direction and relative body/range.
     b1,b2,b3=bull.shift(1),bull.shift(2),bull.shift(3); r1,r2,r3=rng.shift(1),rng.shift(2),rng.shift(3)
     body1,body2,body3=body.shift(1),body.shift(2),body.shift(3)
