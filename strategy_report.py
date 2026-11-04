@@ -65,12 +65,16 @@ def _rating(s: dict[str, Any]) -> float:
     test_pf = clamp((min(float(s.get("test_profit_factor", 0.0)), 3.0) - 1.0) / 2.0)
     validation_pf = clamp((min(float(s.get("validation_profit_factor", 0.0)), 3.0) - 1.0) / 2.0)
     win_rate = clamp(float(s.get("test_win_rate", 0.0)))
-    sample = clamp(min(int(s.get("test_trades", 0)), int(s.get("validation_trades", 0))) / 30.0)
+    sample = clamp(min(int(s.get("test_trades", 0)), int(s.get("validation_trades", 0))) / 40.0)
+    drawdown = clamp(1.0 - abs(float(s.get("test_max_drawdown", 0.0))) / 0.20)
+    expectancy = clamp(0.5 + float(s.get("test_net_mean_return", 0.0)) * 25.0)
     score = (
-        40.0 * (0.70 * test_return + 0.30 * validation_return)
-        + 25.0 * (0.70 * test_pf + 0.30 * validation_pf)
-        + 20.0 * win_rate
-        + 15.0 * sample
+        30.0 * (0.70 * test_return + 0.30 * validation_return)
+        + 20.0 * (0.70 * test_pf + 0.30 * validation_pf)
+        + 15.0 * win_rate
+        + 10.0 * sample
+        + 15.0 * drawdown
+        + 10.0 * expectancy
     )
     return round(score, 2)
 
@@ -96,6 +100,16 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
             "validation_profit_factor":float(stats.get("last_validation_profit_factor",0)),
             "test_profit_factor":float(stats.get("last_test_profit_factor",0)),
             "test_win_rate":float(stats.get("test_win_rate",0)),
+            "test_max_drawdown":float(stats.get("last_test_max_drawdown",0)),
+            "test_net_mean_return":float(stats.get("last_test_net_mean_return",0)),
+            "walk_forward":stats.get("last_walk_forward",{}),
+            "market_regimes":stats.get("last_market_regimes",{}),
+            "robustness":stats.get("last_robustness",{}),
+            "cross_asset_validation":stats.get("cross_asset_validation",{}),
+            "cross_asset_count":int(stats.get("cross_asset_count",0)),
+            "cross_asset_positive_count":int(stats.get("cross_asset_positive_count",0)),
+            "monitor_status":stats.get("monitor_status","unproven"),
+            "rolling_test_history":stats.get("rolling_test_history",[]),
             "successful":bool(stats.get("successful",False))
         })
     for strategy in strategies:
