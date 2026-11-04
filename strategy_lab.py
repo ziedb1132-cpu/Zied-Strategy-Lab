@@ -152,7 +152,16 @@ def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dic
     threshold=max(.2,min(.8,parent_threshold+rng.uniform(-.08,.08)))
     parent_hold=int(rng.choice(prior[:30]).get('holding_bars',12)) if prior and rng.random()<0.55 else rng.choice([4,8,12,16,24,32,48])
     hold=parent_hold if rng.random()<0.65 else rng.choice([4,8,12,16,24,32,48])
-    return {'features':list(dict.fromkeys(selected)),'direction':'long','threshold':round(threshold,3),'holding_bars':hold}
+    # Hybrid rules combine multiple feature families rather than treating every feature equally.
+    families={x.split('_')[0] for x in selected}
+    hybrid_mode=rng.choice(['mean','consensus','weighted']) if len(families)>=2 else 'mean'
+    entry_method=rng.choice(['market','breakout','pullback','retest','confirmation'])
+    exit_policy=rng.choice(['fixed_bracket','trailing','time_exit','adaptive_bracket'])
+    tp_atr=round(rng.choice([1.5,2.0,2.5,3.0,4.0]),2)
+    sl_atr=round(rng.choice([1.0,1.25,1.5,2.0,2.5]),2)
+    return {'features':list(dict.fromkeys(selected)),'direction':'long','threshold':round(threshold,3),
+            'holding_bars':hold,'hybrid_mode':hybrid_mode,'entry_method':entry_method,
+            'exit_policy':exit_policy,'tp_atr':tp_atr,'sl_atr':sl_atr}
 
 def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hold:int)->dict[str,Any]:
     """Evaluate non-overlapping trades strictly inside one chronological segment."""
@@ -185,6 +194,129 @@ def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hol
     }
 
 
+
+def _candidate_strength(candidate:dict[str,Any],features:pd.DataFrame)->np.ndarray:
+    cols=[x for x in candidate.get('features',[]) if x in features.columns]
+    if not cols:
+        return np.zeros(len(features),dtype=float)
+    x=features[cols].astype(float)
+    z=((x-x.rolling(100,min_periods=30).mean())/(x.rolling(100,min_periods=30).std()+1e-9)).clip(-4,4).fillna(0)
+    mode=candidate.get('hybrid_mode','mean')
+    if mode=='consensus':
+        values=(z>0).mean(axis=1).to_numpy()
+        return (values-.5)*2
+    if mode=='weighted':
+        weights=np.asarray([1.5 if col.split('_')[0] in {'ema','sma','macd','adx'} else 1.0 for col in cols])
+        return np.average(z.to_numpy(),axis=1,weights=weights)
+    return z.mean(axis=1).to_numpy()
+
+
+def _advanced_execution(candidate:dict[str,Any],features:pd.DataFrame,frame:pd.DataFrame,start:int,end:int)->dict[str,Any]:
+    """Conservative OHLC paper simulation with entry variants, bracket exits and costs."""
+    if end-start<20:
+        return {'trades':0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'trade_returns':[]}
+    strength=_candidate_strength(candidate,features)
+    close=frame['close'].to_numpy(float); high=frame['high'].to_numpy(float); low=frame['low'].to_numpy(float)
+    open_=frame['open'].to_numpy(float)
+    atr=features.get('atr_14_raw',pd.Series(np.zeros(len(frame)))).to_numpy(float)*close
+    threshold=float(candidate.get('threshold',.5)); hold=int(candidate.get('holding_bars',12))
+    method=candidate.get('entry_method','market'); policy=candidate.get('exit_policy','fixed_bracket')
+    tp_mult=float(candidate.get('tp_atr',2.5)); sl_mult=float(candidate.get('sl_atr',1.5))
+    fee=(ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE)/10000.0
+    returns=[]; i=max(start+1,1); last=max(start,end-2)
+    while i<last:
+        score_ok=strength[i]>threshold
+        if method=='breakout':
+            trigger=score_ok and close[i]>np.max(high[max(start,i-20):i])
+        elif method=='pullback':
+            ema=close[max(start,i-20):i].mean()
+            trigger=score_ok and close[i]>=ema and close[i]<=ema*1.01
+        elif method=='retest':
+            prior_break=close[i-1]>np.max(high[max(start,i-21):i-1]) if i-1>start else False
+            trigger=score_ok and prior_break and close[i]>=close[i-1]
+        elif method=='confirmation':
+            trigger=score_ok and strength[i-1]>threshold
+        else:
+            trigger=score_ok
+        if not trigger or not np.isfinite(atr[i]) or atr[i]<=0:
+            i+=1; continue
+        entry=max(open_[i],close[i]) if method=='breakout' else close[i]
+        stop=entry-sl_mult*atr[i]; target=entry+tp_mult*atr[i]
+        peak=entry; exit_price=close[min(i+hold,end-1)]; exit_index=min(i+hold,end-1); exit_reason='time_exit'
+        for j in range(i+1,min(i+hold+1,end)):
+            peak=max(peak,high[j])
+            if policy=='trailing':
+                stop=max(stop,peak-1.5*atr[i])
+            elif policy=='adaptive_bracket':
+                # Volatility-aware bracket; the initial levels remain fixed for the trade.
+                target=entry+tp_mult*atr[i]
+            hit_sl=low[j]<=stop; hit_tp=high[j]>=target
+            if hit_sl:  # If both are touched in one candle, assume the adverse stop happens first.
+                exit_price=stop; exit_index=j; exit_reason='trailing_stop' if policy=='trailing' else 'stop_loss'; break
+            if hit_tp:
+                exit_price=target; exit_index=j; exit_reason='take_profit'; break
+        gross=exit_price/entry-1.0 if entry>0 else 0.0
+        returns.append({'net_return':float(gross-fee),'gross_return':float(gross),'exit':exit_reason,'bars_held':exit_index-i})
+        i=exit_index+1
+    arr=np.asarray([x['net_return'] for x in returns],dtype=float)
+    wins=arr[arr>0]; losses=arr[arr<0]
+    eq=np.cumprod(1+arr) if len(arr) else np.asarray([])
+    dd=eq/np.maximum.accumulate(np.r_[1.0,eq])[1:]-1 if len(arr) else np.asarray([])
+    return {'trades':len(returns),'net_total_return':float(np.prod(1+arr)-1) if len(arr) else 0.0,
+            'net_mean_return':float(arr.mean()) if len(arr) else 0.0,'win_rate':float((arr>0).mean()) if len(arr) else 0.0,
+            'profit_factor':float(wins.sum()/abs(losses.sum())) if len(losses) and abs(losses.sum())>0 else (999.0 if len(wins) else 0.0),
+            'max_drawdown':float(dd.min()) if len(dd) else 0.0,'trade_returns':[float(x) for x in arr],
+            'exit_counts':{reason:sum(1 for x in returns if x['exit']==reason) for reason in sorted({x['exit'] for x in returns})},
+            'entry_method':method,'exit_policy':policy,'tp_atr':tp_mult,'sl_atr':sl_mult}
+
+
+def _monte_carlo(trade_returns:list[float],seed:int=17,simulations:int=1000)->dict[str,Any]:
+    arr=np.asarray(trade_returns,dtype=float)
+    if len(arr)<5:
+        return {'simulations':0,'risk_of_ruin':None,'median_return':None,'p05_return':None,'p95_return':None}
+    rng=np.random.default_rng(seed); outcomes=[]
+    for _ in range(simulations):
+        shuffled=rng.permutation(arr)
+        outcomes.append(float(np.prod(1+shuffled)-1))
+    vals=np.asarray(outcomes)
+    return {'simulations':simulations,'risk_of_ruin':float((vals<=-.20).mean()),
+            'median_return':float(np.median(vals)),'p05_return':float(np.quantile(vals,.05)),
+            'p95_return':float(np.quantile(vals,.95))}
+
+
+def _confidence_score(validation:dict[str,Any],walk_forward:dict[str,Any],robustness:dict[str,Any],
+                      monte_carlo:dict[str,Any],cross_asset:dict[str,Any]|None=None)->float:
+    sample=min(1.0,validation.get('trades',0)/100.0)
+    folds=walk_forward.get('positive_folds',0)/max(1,walk_forward.get('folds_with_trades',0))
+    robust=robustness.get('positive_runs',0)/3.0
+    mc=monte_carlo.get('risk_of_ruin')
+    mc_score=0.5 if mc is None else max(0.0,1.0-min(1.0,mc*5))
+    assets=(cross_asset or {}).values()
+    asset_items=[x for x in assets if x.get('status')=='evaluated']
+    asset_score=(sum(1 for x in asset_items if x.get('validation',{}).get('net_total_return',0)>0)/len(asset_items)) if asset_items else .5
+    return round(100*(.20*sample+.20*folds+.20*robust+.20*mc_score+.20*asset_score),2)
+
+
+def _correlation_diversity(candidates:list[dict[str,Any]],features:pd.DataFrame,validation_start:int,validation_end:int)->dict[str,Any]:
+    vectors=[]
+    for candidate in candidates:
+        strength=_candidate_strength(candidate,features)
+        vectors.append((strength[validation_start:validation_end]>float(candidate.get('threshold',.5))).astype(float))
+    if len(vectors)<2:
+        return {'average_absolute_correlation':0.0,'highly_correlated_pairs':0,'pairs':[]}
+    matrix=np.asarray(vectors); corr=np.corrcoef(matrix)
+    pairs=[]
+    for i in range(len(candidates)):
+        for j in range(i+1,len(candidates)):
+            value=float(corr[i,j]) if np.isfinite(corr[i,j]) else 0.0
+            if abs(value)>=.85:
+                pairs.append({'strategy_a':candidates[i]['id'],'strategy_b':candidates[j]['id'],'correlation':value})
+    upper=np.triu_indices(len(candidates),1)
+    vals=np.nan_to_num(corr[upper],nan=0.0)
+    return {'average_absolute_correlation':float(np.mean(np.abs(vals))) if len(vals) else 0.0,
+            'highly_correlated_pairs':len(pairs),'pairs':pairs}
+
+
 def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series)->dict[str,Any]:
     cols=[x for x in candidate['features'] if x in features.columns]
     n=len(close); hold=int(candidate['holding_bars'])
@@ -196,7 +328,7 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     means=x.rolling(100,min_periods=30).mean()
     std=x.rolling(100,min_periods=30).std()
     normalized=((x-means)/(std+1e-9)).clip(-4,4).fillna(0)
-    strength=normalized.mean(axis=1).to_numpy()
+    strength=_candidate_strength(candidate,features)
     threshold=float(candidate['threshold'])
     signal=np.where(strength>threshold,1,np.where(strength<-threshold,-1,0))
     signal=np.maximum(signal,0)  # BUY-only; bearish values never become shorts.
@@ -244,11 +376,13 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
              -0.10*abs(validation['max_drawdown'])
              -sample_penalty) if validation['trades'] else -1.0
     status='evaluated' if validation['trades']>=MIN_QUALIFYING_TRADES and test['trades']>=MIN_QUALIFYING_TRADES else 'insufficient_sample'
+    walk_forward={'folds':fold_metrics,'folds_with_trades':len(valid_folds),'positive_folds':wf_positive,'mean_net_return':wf_mean}
+    robustness_result={'threshold_factors':[0.90,1.0,1.10],'runs':robustness,'positive_runs':robust_positive,'mean_net_return':robust_mean}
+    advanced_validation=_advanced_execution(candidate,features,_clean_frame_for_execution(features,close),train_end,validation_end) if False else None
     return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
-            'walk_forward':{'folds':fold_metrics,'folds_with_trades':len(valid_folds),'positive_folds':wf_positive,'mean_net_return':wf_mean},
-            'market_regimes':regime_metrics,
-            'robustness':{'threshold_factors':[0.90,1.0,1.10],'runs':robustness,'positive_runs':robust_positive,'mean_net_return':robust_mean},
+            'walk_forward':walk_forward,'market_regimes':regime_metrics,'robustness':robustness_result,
             'quality_score':float(max(0.0,min(100.0,50+fitness*100))),
+            'monte_carlo':_monte_carlo([]),'confidence_score':_confidence_score(validation,walk_forward,robustness_result,_monte_carlo([])),
             'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
             'fitness_basis':'validation_only','minimum_trades_for_qualification':MIN_QUALIFYING_TRADES}
 
