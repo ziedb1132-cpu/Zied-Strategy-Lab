@@ -33,7 +33,7 @@ def fetch_okx_candles(inst_id: str = "BTC-USDT", bar: str = "1H", limit: int = 1
     if not inst_id.endswith("-USDT") or not inst_id.replace("-", "").isalnum():
         raise ValueError("Only OKX Spot USDT instruments are supported, e.g. BTC-USDT.")
     if bar not in SUPPORTED_BARS:
-        raise ValueError(f"Unsupported OKX candle interval: {bar}. Supported: {", ".join(SUPPORTED_BARS)}")
+        raise ValueError(f"Unsupported OKX candle interval: {bar}")
     if not 120 <= limit <= 10000:
         raise ValueError("Candle limit must be between 120 and 10000.")
     rows: dict[int, list[str]] = {}
