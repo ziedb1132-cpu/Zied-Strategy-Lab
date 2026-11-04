@@ -145,10 +145,14 @@ def extract_features(frame:pd.DataFrame)->pd.DataFrame:
 def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dict[str,Any]:
     rng=random.Random(seed); selected=[]
     if prior and rng.random()<.45:
-        selected=[x for x in rng.choice(prior[-30:]).get('features',[]) if x in available][:rng.randint(3,8)]
+        selected=[x for x in rng.choice(prior[:30]).get('features',[]) if x in available][:rng.randint(3,8)]
     pool=[x for x in available if x not in selected]
     if pool: selected+=rng.sample(pool,k=min(rng.randint(4,10),len(pool)))
-    return {'features':list(dict.fromkeys(selected)),'direction':'long','threshold':round(rng.uniform(.2,.8),3),'holding_bars':rng.choice([4,8,12,16,24,32,48])}
+    parent_threshold=float(rng.choice(prior[:30]).get('threshold',0.5)) if prior and rng.random()<0.65 else rng.uniform(.2,.8)
+    threshold=max(.2,min(.8,parent_threshold+rng.uniform(-.08,.08)))
+    parent_hold=int(rng.choice(prior[:30]).get('holding_bars',12)) if prior and rng.random()<0.55 else rng.choice([4,8,12,16,24,32,48])
+    hold=parent_hold if rng.random()<0.65 else rng.choice([4,8,12,16,24,32,48])
+    return {'features':list(dict.fromkeys(selected)),'direction':'long','threshold':round(threshold,3),'holding_bars':hold}
 
 def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hold:int)->dict[str,Any]:
     """Evaluate non-overlapping trades strictly inside one chronological segment."""
@@ -255,6 +259,11 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
     features=extract_features(frame); close=_clean(frame).close
     # Keep strategy identity and score history separate for each timeframe.
     prior=[c for c in memory.get('candidates',[]) if c.get('bar','1H')==timeframe]
+    prior.sort(key=lambda c: (
+        bool(memory.get('performance',{}).get(c.get('id',''),{}).get('successful',False)),
+        float(memory.get('performance',{}).get(c.get('id',''),{}).get('last_validation_net_total_return',0.0)),
+        float(memory.get('performance',{}).get(c.get('id',''),{}).get('last_validation_profit_factor',0.0))
+    ), reverse=True)
     available=[x for x in features.columns if not x.startswith('talib_')]
     candidates=[]; seen=set()
     timeframe_cycle=int(memory.setdefault('timeframe_cycles',{}).get(timeframe,0))
@@ -283,6 +292,15 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['last_validation_profit_factor']=float(validation.get('profit_factor',0.0))
         stats['last_validation_trades']=int(validation.get('trades',0))
         stats['last_test_trades']=int(test.get('trades',0))
+        stats['last_walk_forward']=ev.get('walk_forward',{})
+        stats['last_market_regimes']=ev.get('market_regimes',{})
+        stats['last_robustness']=ev.get('robustness',{})
+        rolling=stats.setdefault('rolling_test_history',[])
+        rolling.append({'cycle':memory.get('cycle',0)+1,'net_total_return':float(test.get('net_total_return',0.0)),
+                        'profit_factor':float(test.get('profit_factor',0.0)),
+                        'win_rate':float(test.get('win_rate',0.0)),
+                        'max_drawdown':float(test.get('max_drawdown',0.0))})
+        stats['rolling_test_history']=rolling[-5:]
         stats['successful']=bool(
             ev.get('status')=='evaluated'
             and validation.get('trades',0)>=MIN_QUALIFYING_TRADES and test.get('trades',0)>=MIN_QUALIFYING_TRADES
@@ -292,6 +310,9 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
             and test.get('profit_factor',0)>1
         )
         stats['test_win_rate']=stats['test_wins']/stats['test_trades'] if stats['test_trades'] else 0.0
+        stats['monitor_status']=('watch' if len(stats['rolling_test_history'])>=3 and
+                                 all(x['net_total_return']<=0 for x in stats['rolling_test_history'][-3:])
+                                 else 'healthy' if stats['successful'] else 'unproven')
     memory['schema_version']=3
     memory['cycle']=int(memory.get('cycle',0))+1
     memory.setdefault('timeframe_cycles',{})[timeframe]=timeframe_cycle+1
