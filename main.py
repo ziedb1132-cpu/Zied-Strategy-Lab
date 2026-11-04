@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import pandas as pd
 from okx_data import fetch_okx_candles, SUPPORTED_BARS, default_candle_count
-from strategy_lab import discover_cycle, build_chart_payload, evaluate_cross_asset_candidates
+from strategy_lab import discover_cycle, build_chart_payload, evaluate_cross_asset_candidates, _confidence_score
 from strategy_report import build_report
 
 
@@ -59,11 +59,20 @@ def main() -> None:
                 for candidate in result["candidates"]:
                     asset_result = cross_results.get(candidate["id"], {})
                     candidate["evaluation"]["cross_asset"] = asset_result
+                    valid_assets = [v.get("validation", {}) for v in asset_result.values() if v.get("status") == "evaluated"]
+                    positive_assets = sum(1 for v in valid_assets if v.get("net_total_return", 0) > 0)
+                    candidate["evaluation"]["confidence_score"] = _confidence_score(
+                        candidate["evaluation"].get("validation", {}),
+                        candidate["evaluation"].get("walk_forward", {}),
+                        candidate["evaluation"].get("robustness", {}),
+                        candidate["evaluation"].get("monte_carlo", {}),
+                        asset_result
+                    )
                     stats = saved_memory.get("performance", {}).get(candidate["id"], {})
                     stats["cross_asset_validation"] = asset_result
-                    valid_assets = [v.get("validation", {}) for v in asset_result.values() if v.get("status") == "evaluated"]
                     stats["cross_asset_count"] = len(valid_assets)
-                    stats["cross_asset_positive_count"] = sum(1 for v in valid_assets if v.get("net_total_return", 0) > 0)
+                    stats["cross_asset_positive_count"] = positive_assets
+                    stats["last_confidence_score"] = candidate["evaluation"]["confidence_score"]
                     saved_memory.get("performance", {})[candidate["id"]] = stats
                 memory_file.write_text(json.dumps(saved_memory, indent=2, allow_nan=False), encoding="utf-8")
             result["cross_asset_instruments"] = list(cross_frames)
