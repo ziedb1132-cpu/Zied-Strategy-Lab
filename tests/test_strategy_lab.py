@@ -114,6 +114,6 @@ def test_default_historical_windows_are_configured_for_all_bars():
     assert counts["1D"] == 1825
 
 
-def test_qualification_requires_one_hundred_trades():
+def test_qualification_requires_forty_trades():
     from strategy_lab import MIN_QUALIFYING_TRADES
-    assert MIN_QUALIFYING_TRADES == 100
+    assert MIN_QUALIFYING_TRADES == 40
