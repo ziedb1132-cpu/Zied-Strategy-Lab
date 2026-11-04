@@ -264,3 +264,82 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
     memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'bar':timeframe,'candidate_scores':cycle_scores}])[-500:]
     path.write_text(json.dumps(memory,indent=2,allow_nan=False),encoding='utf-8')
     return {'cycle':memory['cycle'],'feature_catalog_size':len(FEATURE_CATALOG),'computed_features':len(features.columns),'candlestick_patterns':CANDLE_PATTERNS,'candidates':candidates,'research_only':True,'estimated_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
+
+
+def build_chart_payload(frame: pd.DataFrame, memory_path: str = "data/lab_memory.json",
+                        instrument: str = "SOL-USDT", timeframe: str = "1H",
+                        candle_limit: int = 220) -> dict[str, Any]:
+    """Create a compact, reproducible chart snapshot using the same BUY rule as research."""
+    clean = _clean(frame)
+    features = extract_features(frame)
+    memory = json.loads(Path(memory_path).read_text(encoding="utf-8")) if Path(memory_path).exists() else {}
+    eligible = []
+    for sid, stats in memory.get("performance", {}).items():
+        candidate = stats.get("candidate", {})
+        if candidate.get("bar", "1H") != timeframe or candidate.get("direction") != "long":
+            continue
+        if not stats.get("successful"):
+            continue
+        eligible.append((float(stats.get("last_test_net_total_return", 0.0)),
+                         float(stats.get("last_test_profit_factor", 0.0)), sid, candidate))
+    eligible.sort(reverse=True)
+    candles = []
+    for row in clean.tail(candle_limit).itertuples(index=False):
+        ts = getattr(row, "timestamp", None)
+        stamp = int(pd.Timestamp(ts).timestamp()) if ts is not None else None
+        if stamp is None:
+            continue
+        candles.append({"time": stamp, "open": float(row.open), "high": float(row.high),
+                        "low": float(row.low), "close": float(row.close)})
+    payload: dict[str, Any] = {
+        "instrument": instrument, "timeframe": timeframe, "candles": candles,
+        "strategy": None, "signal": None, "markers": [], "levels": None,
+        "atr_period": 14, "sl_atr": 2.0, "tp_atr": 3.0
+    }
+    if not candles or not eligible:
+        payload["status"] = "no_successful_strategy"
+        return payload
+
+    _, _, sid, candidate = eligible[0]
+    columns = [name for name in candidate.get("features", []) if name in features.columns]
+    if not columns:
+        payload["status"] = "strategy_features_unavailable"
+        return payload
+    values = features[columns].astype(float)
+    means = values.rolling(100, min_periods=30).mean()
+    std = values.rolling(100, min_periods=30).std()
+    strength = (((values - means) / (std + 1e-9)).clip(-4, 4).fillna(0)
+                .mean(axis=1).to_numpy())
+    signal = (strength > float(candidate.get("threshold", 0.0))).astype(int)
+    signal_times = []
+    for i in range(max(0, len(clean) - 50), len(clean)):
+        if i < len(signal) and signal[i] == 1:
+            signal_times.append(i)
+    payload["strategy"] = {
+        "id": sid, "name": sid, "threshold": float(candidate.get("threshold", 0.0)),
+        "features": columns, "holding_bars": int(candidate.get("holding_bars", 0))
+    }
+    marker_rows = []
+    for i in signal_times[-20:]:
+        ts = int(pd.Timestamp(clean.iloc[i]["timestamp"]).timestamp())
+        marker_rows.append({"time": ts, "position": "belowBar", "color": "#12805c",
+                            "shape": "arrowUp", "text": "BUY"})
+    payload["markers"] = marker_rows
+
+    if signal_times:
+        entry_i = signal_times[-1]
+        age = len(clean) - 1 - entry_i
+        entry = float(clean.iloc[entry_i]["close"])
+        atr_col = features["atr_14_raw"] if "atr_14_raw" in features else None
+        atr_ratio = float(atr_col.iloc[entry_i]) if atr_col is not None else 0.0
+        atr = atr_ratio * entry if atr_ratio > 0 else 0.0
+        if atr > 0:
+            payload["signal"] = {
+                "side": "BUY", "time": int(pd.Timestamp(clean.iloc[entry_i]["timestamp"]).timestamp()),
+                "entry": entry, "age_bars": age,
+                "status": "ACTIVE" if age <= int(candidate.get("holding_bars", 0)) else "EXPIRED"
+            }
+            payload["levels"] = {"entry": entry, "sl": entry - 2.0 * atr,
+                                 "tp": entry + 3.0 * atr, "atr": atr}
+    payload["status"] = "ready" if payload["levels"] else "no_recent_buy_signal"
+    return payload
