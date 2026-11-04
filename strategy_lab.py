@@ -212,17 +212,21 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
             'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
             'fitness_basis':'validation_only'}
 
-def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',candidate_count:int=10)->dict[str,Any]:
+def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',candidate_count:int=10,timeframe:str='1H')->dict[str,Any]:
     if candidate_count!=10: raise ValueError('Exactly 10 strategies are generated per cycle.')
     path=Path(memory_path); path.parent.mkdir(parents=True,exist_ok=True)
     memory=json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'cycle':0,'candidates':[],'history':[]}
     features=extract_features(frame); close=_clean(frame).close
-    # Use computed features only, so each selected feature is actually measurable.
+    # Keep strategy identity and score history separate for each timeframe.
+    prior=[c for c in memory.get('candidates',[]) if c.get('bar','1H')==timeframe]
     available=[x for x in features.columns if not x.startswith('talib_')]
     candidates=[]; seen=set()
+    timeframe_cycle=int(memory.setdefault('timeframe_cycles',{}).get(timeframe,0))
+    seed_offset=sum((i+1)*ord(ch) for i,ch in enumerate(timeframe))
     for i in range(10):
         for attempt in range(200):
-            cand=_make_candidate(int(memory.get('cycle',0))*1009+i*97+attempt,memory.get('candidates',[]),available)
+            cand=_make_candidate(timeframe_cycle*1009+seed_offset+i*97+attempt,prior,available)
+            cand['bar']=timeframe
             sig=hashlib.sha1(json.dumps(cand,sort_keys=True).encode()).hexdigest()
             if sig not in seen: seen.add(sig); cand['id']=sig[:12]; candidates.append(cand); break
     for cand in candidates: cand['evaluation']=_evaluate_candidate(cand,features,close)
@@ -252,10 +256,11 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
             and test.get('profit_factor',0)>1
         )
         stats['test_win_rate']=stats['test_wins']/stats['test_trades'] if stats['test_trades'] else 0.0
-    memory['schema_version']=2
+    memory['schema_version']=3
     memory['cycle']=int(memory.get('cycle',0))+1
+    memory.setdefault('timeframe_cycles',{})[timeframe]=timeframe_cycle+1
     memory['candidates']=(memory.get('candidates',[])+candidates)[-200:]
     cycle_scores=[{'id':x['id'],'fitness':x['evaluation']['fitness'],'status':x['evaluation']['status'],'validation':x['evaluation']['validation'],'test':x['evaluation']['test']} for x in candidates]
-    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'candidate_scores':cycle_scores}])[-500:]
+    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'bar':timeframe,'candidate_scores':cycle_scores}])[-500:]
     path.write_text(json.dumps(memory,indent=2,allow_nan=False),encoding='utf-8')
     return {'cycle':memory['cycle'],'feature_catalog_size':len(FEATURE_CATALOG),'computed_features':len(features.columns),'candlestick_patterns':CANDLE_PATTERNS,'candidates':candidates,'research_only':True,'estimated_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
