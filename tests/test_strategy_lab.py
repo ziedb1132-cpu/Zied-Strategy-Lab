@@ -72,12 +72,12 @@ def test_candidate_count_must_be_ten(tmp_path):
 
 def test_okx_candle_fetcher_parses_confirmed_rows(monkeypatch):
     import okx_data
-    monkeypatch.setattr(okx_data, "_request_candles", lambda endpoint, params, timeout=20: [
-        ["1735689600000", "100", "105", "99", "103", "12", "12", "1236", "1"],
-        ["1735693200000", "103", "106", "101", "104", "15", "15", "1560", "0"],
-    ])
+    rows = [[str(1735689600000 + i * 3600000), "100", "105", "99", str(103 + i * 0.01),
+             "12", "12", "1236", "1"] for i in range(120)]
+    rows.append(["1736121600000", "103", "106", "101", "104", "15", "15", "1560", "0"])
+    monkeypatch.setattr(okx_data, "_request_candles", lambda endpoint, params, timeout=20: rows)
     frame = fetch_okx_candles("BTC-USDT", "1H", 120)
-    assert len(frame) == 1 and frame.iloc[0]["close"] == 103.0
+    assert len(frame) == 120 and frame.iloc[0]["close"] == 103.0
     assert str(frame.iloc[0]["timestamp"].tz) == "UTC"
 
 
