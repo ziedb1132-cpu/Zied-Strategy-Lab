@@ -1,33 +1,28 @@
 # Zied Strategy Lab
 
-An independent research sandbox; separate from `Zied-`. It does not send live OKX orders.
+مختبر بحث مستقل لا يرسل أوامر تداول حقيقية إلى OKX. يعمل افتراضياً على SOL-USDT Spot ويختبر استراتيجيات الشراء فقط.
 
-## Implemented
-- Exactly **10 candidate strategies per research cycle**.
-- Public OKX Spot USDT historical OHLCV download without API keys; confirmed candles only.
-- Configurable instrument, candle interval, and history size.
-- More than 1,000 feature definitions in the catalog; runtime selects from its computed feature columns.
-- Candle anatomy, common single-/multi-candle recognizers, and optional TA-Lib pattern recognition.
-- Chronological 60/20/20 train/validation/test evaluation. Candidate fitness uses validation only; test data remains held out.
-- Cost-aware metrics: gross/net returns, win rate, profit factor, and maximum drawdown.
-- Persistent per-candidate performance, cycle history, and latest-cycle JSON output.
-- Hourly scheduled GitHub Actions research cycle plus manual dispatch; generated state is committed to `main`.
+## ما يفعله المختبر
+- ينشئ 10 استراتيجيات شراء جديدة في كل دورة.
+- يمنع إنشاء اتجاهات بيع أو استراتيجيات Short.
+- يستخدم بيانات الشموع العامة من OKX دون مفاتيح API.
+- يضم أكثر من 1,000 تعريف للخصائص وأنماط شموع مفردة ومتعددة.
+- يقيم الاستراتيجيات زمنياً بتقسيم 60% تدريب و20% تحقق و20% اختبار.
+- يحتسب الرسوم والانزلاق السعري في النتائج.
+- يحفظ ذاكرة المختبر ويستأنف منها دون تصفيرها.
+- يحدث ملفات `data/strategy_report.json` و`data/strategy_report.html` بعد كل دورة.
+- يعرض التقرير عدد الاستراتيجيات الفريدة والناجحة وأسماءها وشرح شروطها ونتائجها.
+- يشترط للنجاح عينات كافية وعائداً صافياً موجباً وProfit Factor أكبر من 1 في التحقق والاختبار معاً.
+- يشغل GitHub Actions 200 دورة متتابعة، ويحفظ الملفات بعد كل دورة، ثم يطلق Workflow جديداً تلقائياً.
 
-## Run locally
-```bash
-pip install -r requirements.txt
-python main.py --inst-id SOL-USDT --bar 1H --candles 1500
-```
+## التشغيل
+من Actions شغّل **Strategy Lab research cycle** مرة واحدة. الإعدادات الافتراضية SOL-USDT و1H و1500 شمعة. بعد أول تشغيل تبدأ السلسلة المستمرة تلقائياً، مع استمرار الذاكرة دون تصفير.
 
-You can also supply a local CSV instead:
-```bash
-python main.py --csv path/to/ohlcv.csv
-```
+## الملفات
+- `data/lab_memory.json`: الذاكرة التراكمية.
+- `data/latest_cycle.json`: نتائج آخر دورة.
+- `data/strategy_report.json`: التقرير المنظم.
+- `data/strategy_report.html`: صفحة التقرير.
 
-Supported options: `--inst-id` (OKX Spot USDT pair), `--bar` (e.g. `5m`, `15m`, `1H`, `4H`, `1D`), `--candles` (120-10000), `--memory`, and `--out`.
-
-## Automated research
-The `.github/workflows/research.yml` workflow runs hourly and can also be started manually from the Actions tab. Manual inputs let you choose the instrument, interval, and number of candles. Each successful run commits `data/lab_memory.json` and `data/latest_cycle.json`, so the next cycle resumes from saved research history. The workflow uses only public market data; no OKX API key or trading permission is required.
-
-## Evaluation caveats
-The evaluator uses fixed holding-period close-to-close returns, not OHLC stop/target execution. Costs are configurable constants (20 bps round-trip fee plus 5 bps slippage per side by default), not exchange-specific account fee tiers. It does not model partial fills, liquidity constraints, or portfolio interactions. Results depend on the chosen instrument and timeframe; require substantial history and repeated positive out-of-sample performance before considering any integration. Passing tests is not evidence of profitability. Results are research metrics, not forecasts or trade recommendations.
+## ملاحظات التقييم
+المحرك يقيس عائداً من الإغلاق إلى الإغلاق لمدة احتفاظ ثابتة، وليس محاكاة تنفيذ OHLC دقيقة لأوامر TP/SL. الرسوم والانزلاق تقديرات ثابتة. النجاح التاريخي لا يضمن الربحية المستقبلية.
