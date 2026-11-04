@@ -62,6 +62,21 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
     }
     Path(json_path).parent.mkdir(parents=True,exist_ok=True)
     Path(json_path).write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),encoding="utf-8")
+    # Small dashboard payload: never expose/load the full research report in Zied Quant.
+    summary = {
+        "updated_at": report["updated_at"],
+        "cycle": report["cycle"],
+        "strategies_discovered": report["strategies_discovered"],
+        "successful_buy_strategies": report["successful_buy_strategies"],
+        "strategies": [
+            {"id": s["id"], "name": s["name"], "explanation": s["explanation"]}
+            for s in strategies if s["successful"]
+        ]
+    }
+    Path("data/dashboard_summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, separators=(",", ":"), allow_nan=False),
+        encoding="utf-8"
+    )
     page=r'''<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zied Strategy Lab</title>
 <style>
 :root{color-scheme:light;--ink:#172033;--muted:#64748b;--line:#e2e8f0;--bg:#f5f7fb;--green:#087443;--red:#b42318}
