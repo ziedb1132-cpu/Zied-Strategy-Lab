@@ -42,7 +42,7 @@ def _rating(s: dict[str, Any]) -> float:
 
 
 def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cycle.json",
-                 json_path="data/strategy_report.json", html_path="data/strategy_report.html"):
+                 json_path="data/strategy_report.json", html_path="data/strategy_report.html", chart_payload=None):
     memory=json.loads(Path(memory_path).read_text(encoding="utf-8"))
     latest=json.loads(Path(latest_path).read_text(encoding="utf-8"))
     strategies=[]
@@ -89,6 +89,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         "strategies_discovered": report["strategies_discovered"],
         "successful_buy_strategies": report["successful_buy_strategies"],
         # Only the 20 highest-rated strategies that passed BOTH validation and test.
+        "chart": chart_payload or {"status": "not_available", "instrument": report["instrument"], "timeframe": "1H", "candles": [], "markers": [], "levels": None, "signal": None},
         "strategies": [
             {"id": s["id"], "name": s["name"], "explanation": s["explanation"],
              "rating": s["rating"], "test_net_total_return": s["test_net_total_return"],
