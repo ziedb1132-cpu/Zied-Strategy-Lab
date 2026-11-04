@@ -1,5 +1,5 @@
 {
-  "cycle": 2346,
+  "cycle": 2352,
   "feature_catalog_size": 3060,
   "computed_features": 1095,
   "candlestick_patterns": [
@@ -69,60 +69,281 @@
   "candidates": [
     {
       "features": [
-        "ema_cross_9_14",
-        "rsi_20_raw",
-        "sma_cross_21_40",
-        "sma_cross_20_21",
-        "momentum_24_raw",
-        "sma_cross_9_55",
-        "lower_wick_pct_21",
-        "volatility_regime_144",
-        "sma_cross_72_144",
-        "momentum_120_raw",
-        "sma_cross_9_30",
-        "ema_cross_20_60",
-        "sma_cross_2_60",
-        "ema_cross_3_100",
-        "upper_wick_pct_12",
-        "ema_cross_55_72"
+        "ema_cross_24_34",
+        "rsi_2_raw",
+        "pattern_meeting_lines",
+        "ema_16_raw",
+        "sma_cross_40_144",
+        "bollinger_width_80_raw",
+        "ema_cross_21_55",
+        "trend_regime_2",
+        "sma_cross_16_30",
+        "ema_cross_9_100"
       ],
       "direction": "long",
-      "threshold": 0.461,
-      "holding_bars": 48,
+      "threshold": 0.768,
+      "holding_bars": 8,
       "bar": "1D",
-      "id": "c0c2842a21dd",
+      "id": "330fe7c549a9",
       "evaluation": {
         "train": {
-          "trades": 10,
-          "gross_mean_return": 0.09994068516776952,
-          "net_mean_return": 0.09694068516776952,
-          "net_total_return": -0.37053426403704093,
+          "trades": 20,
+          "gross_mean_return": 0.04350570078508213,
+          "net_mean_return": 0.04050570078508213,
+          "net_total_return": 0.8916091830574666,
           "win_rate": 0.4,
-          "profit_factor": 1.5592692788972957,
-          "max_drawdown": -0.6527163725793489,
+          "profit_factor": 2.3239384517571575,
+          "max_drawdown": -0.25060162322205126,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "validation": {
+          "trades": 4,
+          "gross_mean_return": -0.05763591286554712,
+          "net_mean_return": -0.06063591286554712,
+          "net_total_return": -0.23027059759373203,
+          "win_rate": 0.25,
+          "profit_factor": 0.15445791077786197,
+          "max_drawdown": -0.23027059759373203,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "test": {
+          "trades": 6,
+          "gross_mean_return": 0.03303791145221435,
+          "net_mean_return": 0.03003791145221435,
+          "net_total_return": 0.16755784560188025,
+          "win_rate": 0.6666666666666666,
+          "profit_factor": 2.366318027677313,
+          "max_drawdown": -0.09325391770719849,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "fitness": -6.124118346314086,
+        "status": "insufficient_sample",
+        "split_points": {
+          "train_end": 899,
+          "validation_end": 1199,
+          "test_end": 1499
+        },
+        "fitness_basis": "validation_only",
+        "minimum_trades_for_qualification": 100
+      }
+    },
+    {
+      "features": [
+        "momentum_120_raw",
+        "sma_cross_3_10",
+        "sma_cross_9_34",
+        "sma_cross_120_240",
+        "sma_cross_3_72",
+        "sma_cross_5_16",
+        "candle_bearish",
+        "ema_cross_9_100",
+        "zscore_50_raw"
+      ],
+      "direction": "long",
+      "threshold": 0.31,
+      "holding_bars": 12,
+      "bar": "1D",
+      "id": "3e5bd853f947",
+      "evaluation": {
+        "train": {
+          "trades": 35,
+          "gross_mean_return": 0.037177702456407655,
+          "net_mean_return": 0.034177702456407645,
+          "net_total_return": 0.19462011015819347,
+          "win_rate": 0.42857142857142855,
+          "profit_factor": 1.4476627377344025,
+          "max_drawdown": -0.7389177227651831,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "validation": {
+          "trades": 11,
+          "gross_mean_return": 0.013791988967961128,
+          "net_mean_return": 0.010791988967961125,
+          "net_total_return": 0.024779152882928424,
+          "win_rate": 0.5454545454545454,
+          "profit_factor": 1.1989370746830432,
+          "max_drawdown": -0.27623182814385405,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "test": {
+          "trades": 15,
+          "gross_mean_return": 0.018633055224036656,
+          "net_mean_return": 0.015633055224036654,
+          "net_total_return": 0.13692146445613296,
+          "win_rate": 0.5333333333333333,
+          "profit_factor": 1.4342524662261433,
+          "max_drawdown": -0.18815921237727173,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "fitness": 1.054302986709,
+        "status": "insufficient_sample",
+        "split_points": {
+          "train_end": 899,
+          "validation_end": 1199,
+          "test_end": 1499
+        },
+        "fitness_basis": "validation_only",
+        "minimum_trades_for_qualification": 100
+      }
+    },
+    {
+      "features": [
+        "sma_cross_144_200",
+        "sma_80_raw",
+        "upper_wick_pct_12",
+        "ema_cross_7_55",
+        "ema_cross_55_60",
+        "body_pct_3",
+        "ema_cross_21_120",
+        "ema_cross_3_34",
+        "bollinger_width_30_raw"
+      ],
+      "direction": "long",
+      "threshold": 0.515,
+      "holding_bars": 12,
+      "bar": "1D",
+      "id": "57a1886ee14a",
+      "evaluation": {
+        "train": {
+          "trades": 19,
+          "gross_mean_return": 0.03818667632786524,
+          "net_mean_return": 0.035186676327865235,
+          "net_total_return": 0.17765074806675996,
+          "win_rate": 0.5789473684210527,
+          "profit_factor": 1.5642017373656594,
+          "max_drawdown": -0.5536060606060605,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "validation": {
+          "trades": 6,
+          "gross_mean_return": -0.0076807433792902375,
+          "net_mean_return": -0.01068074337929024,
+          "net_total_return": -0.12257573386808196,
+          "win_rate": 0.5,
+          "profit_factor": 0.8329860795418901,
+          "max_drawdown": -0.19897227349165336,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "test": {
+          "trades": 10,
+          "gross_mean_return": 0.00639316357138422,
+          "net_mean_return": 0.0033931635713842167,
+          "net_total_return": -0.018092554692280216,
+          "win_rate": 0.4,
+          "profit_factor": 1.0886913542469405,
+          "max_drawdown": -0.2484319767869414,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "fitness": -1.092971565278189,
+        "status": "insufficient_sample",
+        "split_points": {
+          "train_end": 899,
+          "validation_end": 1199,
+          "test_end": 1499
+        },
+        "fitness_basis": "validation_only",
+        "minimum_trades_for_qualification": 100
+      }
+    },
+    {
+      "features": [
+        "volatility_regime_72",
+        "ema_cross_30_50",
+        "roc_34_raw",
+        "bollinger_width_24_raw"
+      ],
+      "direction": "long",
+      "threshold": 0.238,
+      "holding_bars": 32,
+      "bar": "1D",
+      "id": "9f9d15a0d1fa",
+      "evaluation": {
+        "train": {
+          "trades": 15,
+          "gross_mean_return": 0.07052818628510507,
+          "net_mean_return": 0.06752818628510505,
+          "net_total_return": -0.15815903350807115,
+          "win_rate": 0.5333333333333333,
+          "profit_factor": 1.5380211852053303,
+          "max_drawdown": -0.6286327631196613,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "validation": {
+          "trades": 4,
+          "gross_mean_return": 0.02925569937617084,
+          "net_mean_return": 0.026255699376170838,
+          "net_total_return": 0.03200277847310429,
+          "win_rate": 0.5,
+          "profit_factor": 1.3473276600867186,
+          "max_drawdown": -0.2249418863798831,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "test": {
+          "trades": 7,
+          "gross_mean_return": -0.045602023169392436,
+          "net_mean_return": -0.04860202316939244,
+          "net_total_return": -0.4213009187125729,
+          "win_rate": 0.2857142857142857,
+          "profit_factor": 0.5880618693815276,
+          "max_drawdown": -0.5147427523179945,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "fitness": 2.595575748979096,
+        "status": "insufficient_sample",
+        "split_points": {
+          "train_end": 899,
+          "validation_end": 1199,
+          "test_end": 1499
+        },
+        "fitness_basis": "validation_only",
+        "minimum_trades_for_qualification": 100
+      }
+    },
+    {
+      "features": [
+        "pattern_upside_gap_two_crows",
+        "sma_cross_12_21",
+        "roc_12_raw",
+        "bollinger_position_72_raw",
+        "ema_cross_144_200"
+      ],
+      "direction": "long",
+      "threshold": 0.698,
+      "holding_bars": 48,
+      "bar": "1D",
+      "id": "9002d52524a6",
+      "evaluation": {
+        "train": {
+          "trades": 9,
+          "gross_mean_return": 0.09148744085017188,
+          "net_mean_return": 0.08848744085017193,
+          "net_total_return": -0.4457010609830383,
+          "win_rate": 0.4444444444444444,
+          "profit_factor": 1.5299679091901561,
+          "max_drawdown": -0.6848914562063407,
           "estimated_round_trip_cost_bps": 30.0
         },
         "validation": {
           "trades": 3,
-          "gross_mean_return": 0.09069231765276276,
-          "net_mean_return": 0.08769231765276275,
-          "net_total_return": 0.25325180662369706,
-          "win_rate": 0.6666666666666666,
-          "profit_factor": 3.671558597890128,
-          "max_drawdown": -0.09847321079389915,
+          "gross_mean_return": -0.00665575446727799,
+          "net_mean_return": -0.009655754467277991,
+          "net_total_return": -0.06466058270341735,
+          "win_rate": 0.3333333333333333,
+          "profit_factor": 0.8792528500305681,
+          "max_drawdown": -0.1655087842586086,
           "estimated_round_trip_cost_bps": 30.0
         },
         "test": {
-          "trades": 5,
-          "gross_mean_return": 0.0030233797005185135,
-          "net_mean_return": 2.3379700518511014e-05,
-          "net_total_return": -0.20616275165722864,
-          "win_rate": 0.4,
-          "profit_factor": 1.0001946461201845,
-          "max_drawdown": -0.5075441584752951,
+          "trades": 4,
+          "gross_mean_return": -0.07384969898507687,
+          "net_mean_return": -0.07684969898507688,
+          "net_total_return": -0.3775319172550451,
+          "win_rate": 0.5,
+          "profit_factor": 0.5122701291119065,
+          "max_drawdown": -0.538534570322077,
           "estimated_round_trip_cost_bps": 30.0
         },
-        "fitness": 8.769384444196886,
+        "fitness": -1.01212632515366,
         "status": "insufficient_sample",
         "split_points": {
           "train_end": 899,
@@ -135,172 +356,54 @@
     },
     {
       "features": [
-        "bollinger_width_144_raw",
-        "sma_cross_5_60",
-        "sma_cross_10_144",
-        "sma_cross_24_40",
-        "sma_cross_20_240",
-        "ema_cross_5_60"
+        "volume_sma_200_raw",
+        "ema_cross_80_240",
+        "ema_cross_5_50",
+        "pattern_hammer",
+        "pattern_marubozu",
+        "sma_2_raw",
+        "ema_cross_3_5",
+        "sma_cross_9_144",
+        "lower_wick_pct_50",
+        "bollinger_position_72_raw"
       ],
       "direction": "long",
-      "threshold": 0.636,
-      "holding_bars": 16,
+      "threshold": 0.543,
+      "holding_bars": 8,
       "bar": "1D",
-      "id": "ed3c0b07b0a0",
+      "id": "6abf7f5d434a",
       "evaluation": {
         "train": {
-          "trades": 14,
-          "gross_mean_return": 0.14695503576852545,
-          "net_mean_return": 0.1439550357685254,
-          "net_total_return": 4.059771998744818,
-          "win_rate": 0.6428571428571429,
-          "profit_factor": 5.869466869369287,
-          "max_drawdown": -0.180808527198824,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "validation": {
-          "trades": 7,
-          "gross_mean_return": -0.05073996257703271,
-          "net_mean_return": -0.053739962577032716,
-          "net_total_return": -0.37006408740076946,
-          "win_rate": 0.2857142857142857,
-          "profit_factor": 0.450782614920816,
-          "max_drawdown": -0.45920239612369806,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "test": {
-          "trades": 10,
-          "gross_mean_return": -0.048196723517045,
-          "net_mean_return": -0.051196723517045004,
-          "net_total_return": -0.4938838528848434,
-          "win_rate": 0.4,
-          "profit_factor": 0.4500846342416446,
-          "max_drawdown": -0.599634743411916,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "fitness": -5.449916497315641,
-        "status": "insufficient_sample",
-        "split_points": {
-          "train_end": 899,
-          "validation_end": 1199,
-          "test_end": 1499
-        },
-        "fitness_basis": "validation_only",
-        "minimum_trades_for_qualification": 100
-      }
-    },
-    {
-      "features": [
-        "ema_cross_9_14",
-        "rsi_20_raw",
-        "sma_cross_21_40",
-        "sma_cross_20_21",
-        "ema_cross_5_9",
-        "ema_cross_5_55",
-        "ema_cross_12_200",
-        "volatility_regime_20",
-        "sma_cross_50_120"
-      ],
-      "direction": "long",
-      "threshold": 0.201,
-      "holding_bars": 32,
-      "bar": "1D",
-      "id": "d07c494eeced",
-      "evaluation": {
-        "train": {
-          "trades": 15,
-          "gross_mean_return": 0.11046350349784836,
-          "net_mean_return": 0.10746350349784833,
-          "net_total_return": 0.5120287559156527,
-          "win_rate": 0.5333333333333333,
-          "profit_factor": 1.8402727528184362,
-          "max_drawdown": -0.5889313065082938,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "validation": {
-          "trades": 5,
-          "gross_mean_return": 0.043837923421697386,
-          "net_mean_return": 0.040837923421697384,
-          "net_total_return": 0.10585193149114724,
-          "win_rate": 0.6,
-          "profit_factor": 1.5175205263373919,
-          "max_drawdown": -0.23354837783519955,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "test": {
-          "trades": 7,
-          "gross_mean_return": -0.044784438225972854,
-          "net_mean_return": -0.04778443822597286,
-          "net_total_return": -0.3980214981670951,
-          "win_rate": 0.5714285714285714,
-          "profit_factor": 0.5452786566829424,
-          "max_drawdown": -0.5702582778770166,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "fitness": 4.066437504386218,
-        "status": "insufficient_sample",
-        "split_points": {
-          "train_end": 899,
-          "validation_end": 1199,
-          "test_end": 1499
-        },
-        "fitness_basis": "validation_only",
-        "minimum_trades_for_qualification": 100
-      }
-    },
-    {
-      "features": [
-        "pattern_three_outside_down",
-        "zscore_24_raw",
-        "trend_regime_200",
-        "ema_cross_24_40",
-        "lower_wick_pct_240",
-        "ema_cross_2_55",
-        "sma_cross_3_30",
-        "lower_wick_pct_2",
-        "sma_cross_55_200",
-        "sma_9_raw",
-        "ema_cross_9_40",
-        "sma_cross_40_144",
-        "bollinger_position_3_raw"
-      ],
-      "direction": "long",
-      "threshold": 0.427,
-      "holding_bars": 12,
-      "bar": "1D",
-      "id": "0aa9e4ce1329",
-      "evaluation": {
-        "train": {
-          "trades": 27,
-          "gross_mean_return": 0.02527361812575611,
-          "net_mean_return": 0.02227361812575611,
-          "net_total_return": -0.15505453612850417,
-          "win_rate": 0.4074074074074074,
-          "profit_factor": 1.2973712886602675,
-          "max_drawdown": -0.6614947473038335,
+          "trades": 34,
+          "gross_mean_return": 0.038296816960263075,
+          "net_mean_return": 0.03529681696026307,
+          "net_total_return": 1.4426847882445286,
+          "win_rate": 0.4411764705882353,
+          "profit_factor": 1.9694747804503276,
+          "max_drawdown": -0.37924360293097215,
           "estimated_round_trip_cost_bps": 30.0
         },
         "validation": {
           "trades": 9,
-          "gross_mean_return": 0.01955028770002117,
-          "net_mean_return": 0.016550287700021166,
-          "net_total_return": 0.0852275781239813,
+          "gross_mean_return": -0.015870829734598007,
+          "net_mean_return": -0.01887082973459801,
+          "net_total_return": -0.1839401683079187,
           "win_rate": 0.5555555555555556,
-          "profit_factor": 1.3784524592084009,
-          "max_drawdown": -0.2770945065540731,
+          "profit_factor": 0.5762594362669181,
+          "max_drawdown": -0.26711010798000634,
           "estimated_round_trip_cost_bps": 30.0
         },
         "test": {
-          "trades": 14,
-          "gross_mean_return": -0.0015980648225295704,
-          "net_mean_return": -0.004598064822529573,
-          "net_total_return": -0.14176294114963495,
-          "win_rate": 0.42857142857142855,
-          "profit_factor": 0.9035958841371148,
-          "max_drawdown": -0.3707256080330914,
+          "trades": 12,
+          "gross_mean_return": 0.011732794639703345,
+          "net_mean_return": 0.008732794639703343,
+          "net_total_return": 0.03389124010257216,
+          "win_rate": 0.5,
+          "profit_factor": 1.2257094610746642,
+          "max_drawdown": -0.28827034048638733,
           "estimated_round_trip_cost_bps": 30.0
         },
-        "fitness": 1.6306526526800424,
+        "fitness": -1.9104606509244684,
         "status": "insufficient_sample",
         "split_points": {
           "train_end": 899,
@@ -313,52 +416,48 @@
     },
     {
       "features": [
-        "close_location_30",
-        "ema_80_raw",
-        "sma_cross_72_144",
-        "pattern_morning_doji_star",
-        "volume_sma_10_raw",
-        "ema_cross_2_7",
-        "sma_cross_5_14",
-        "atr_24_raw"
+        "ema_cross_40_55",
+        "sma_cross_7_40",
+        "ema_cross_72_200",
+        "sma_cross_80_144"
       ],
       "direction": "long",
-      "threshold": 0.497,
-      "holding_bars": 24,
+      "threshold": 0.651,
+      "holding_bars": 4,
       "bar": "1D",
-      "id": "5270feb20935",
+      "id": "eab60b9bffeb",
       "evaluation": {
         "train": {
-          "trades": 17,
-          "gross_mean_return": 0.22393242347046108,
-          "net_mean_return": 0.22093242347046105,
-          "net_total_return": 8.085831912672216,
-          "win_rate": 0.6470588235294118,
-          "profit_factor": 3.952678567463361,
-          "max_drawdown": -0.59771505889844,
+          "trades": 60,
+          "gross_mean_return": 0.01311842126080173,
+          "net_mean_return": 0.010118421260801726,
+          "net_total_return": -0.030467885983374465,
+          "win_rate": 0.5,
+          "profit_factor": 1.2534928247777957,
+          "max_drawdown": -0.6919842156124907,
           "estimated_round_trip_cost_bps": 30.0
         },
         "validation": {
-          "trades": 4,
-          "gross_mean_return": 0.012066156217337198,
-          "net_mean_return": 0.009066156217337196,
-          "net_total_return": 0.010321172950520152,
-          "win_rate": 0.5,
-          "profit_factor": 1.2113850398792838,
-          "max_drawdown": -0.165667882499269,
+          "trades": 29,
+          "gross_mean_return": 0.0009821928561279563,
+          "net_mean_return": -0.002017807143872046,
+          "net_total_return": -0.13858323506700165,
+          "win_rate": 0.5172413793103449,
+          "profit_factor": 0.9381452346503794,
+          "max_drawdown": -0.24927344029033605,
           "estimated_round_trip_cost_bps": 30.0
         },
         "test": {
-          "trades": 5,
-          "gross_mean_return": 0.060875573349930566,
-          "net_mean_return": 0.05787557334993056,
-          "net_total_return": 0.28172030121189606,
-          "win_rate": 0.6,
-          "profit_factor": 5.393485804912005,
-          "max_drawdown": -0.042535984848484865,
+          "trades": 35,
+          "gross_mean_return": -0.0009364587907868696,
+          "net_mean_return": -0.003936458790786872,
+          "net_total_return": -0.1813430526668579,
+          "win_rate": 0.37142857142857144,
+          "profit_factor": 0.8311602424005783,
+          "max_drawdown": -0.41225061348122893,
           "estimated_round_trip_cost_bps": 30.0
         },
-        "fitness": 0.8825488334837928,
+        "fitness": -0.22567357565761753,
         "status": "insufficient_sample",
         "split_points": {
           "train_end": 899,
@@ -371,53 +470,48 @@
     },
     {
       "features": [
-        "ema_cross_5_72",
-        "ema_cross_14_72",
-        "close_location_5",
-        "bollinger_position_80_raw",
-        "trend_regime_80",
-        "ema_cross_144_200",
-        "sma_cross_55_200",
-        "ema_12_raw",
-        "upper_wick_pct_40"
+        "ema_cross_2_100",
+        "ema_cross_7_9",
+        "sma_72_raw",
+        "sma_cross_24_55"
       ],
       "direction": "long",
-      "threshold": 0.657,
-      "holding_bars": 32,
+      "threshold": 0.643,
+      "holding_bars": 24,
       "bar": "1D",
-      "id": "a530ae36e920",
+      "id": "1d9704737705",
       "evaluation": {
         "train": {
           "trades": 8,
-          "gross_mean_return": 0.14427690218561665,
-          "net_mean_return": 0.14127690218561664,
-          "net_total_return": 0.8210637101277758,
-          "win_rate": 0.375,
-          "profit_factor": 2.8089524117852926,
-          "max_drawdown": -0.36908953224557495,
+          "gross_mean_return": 0.06644519068429615,
+          "net_mean_return": 0.06344519068429615,
+          "net_total_return": -0.202816562040127,
+          "win_rate": 0.5,
+          "profit_factor": 1.5256690995110311,
+          "max_drawdown": -0.6465880603536236,
           "estimated_round_trip_cost_bps": 30.0
         },
         "validation": {
           "trades": 3,
-          "gross_mean_return": 0.04022551958451196,
-          "net_mean_return": 0.03722551958451196,
-          "net_total_return": 0.02986431354919805,
-          "win_rate": 0.6666666666666666,
-          "profit_factor": 1.4717346980350907,
-          "max_drawdown": -0.2367359433569345,
+          "gross_mean_return": -0.042840445085012314,
+          "net_mean_return": -0.04584044508501232,
+          "net_total_return": -0.13396564106207187,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": -0.13396564106207187,
           "estimated_round_trip_cost_bps": 30.0
         },
         "test": {
-          "trades": 4,
-          "gross_mean_return": 0.01751924917141795,
-          "net_mean_return": 0.014519249171417947,
-          "net_total_return": -0.05186486599604068,
-          "win_rate": 0.5,
-          "profit_factor": 1.1561950569354815,
-          "max_drawdown": -0.3500857037427163,
+          "trades": 3,
+          "gross_mean_return": -0.0543461542066919,
+          "net_mean_return": -0.0573461542066919,
+          "net_total_return": -0.18336634576574884,
+          "win_rate": 0.3333333333333333,
+          "profit_factor": 0.39672128286559694,
+          "max_drawdown": -0.18336634576574884,
           "estimated_round_trip_cost_bps": 30.0
         },
-        "fitness": 3.7088783641155025,
+        "fitness": -4.6674410726074385,
         "status": "insufficient_sample",
         "split_points": {
           "train_end": 899,
@@ -430,219 +524,116 @@
     },
     {
       "features": [
-        "ema_cross_24_34",
-        "rsi_2_raw",
-        "pattern_meeting_lines",
-        "volume_sma_34_raw",
-        "lower_wick_pct_9",
-        "volume_zscore_14",
-        "sma_cross_20_24",
-        "roc_20_raw",
-        "volume_zscore_9"
-      ],
-      "direction": "long",
-      "threshold": 0.593,
-      "holding_bars": 4,
-      "bar": "1D",
-      "id": "c94ea2b99285",
-      "evaluation": {
-        "train": {
-          "trades": 57,
-          "gross_mean_return": 0.02336347517446818,
-          "net_mean_return": 0.02036347517446818,
-          "net_total_return": 0.6756138374619913,
-          "win_rate": 0.5614035087719298,
-          "profit_factor": 1.5228707928885235,
-          "max_drawdown": -0.5676083461304082,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "validation": {
-          "trades": 19,
-          "gross_mean_return": -0.004681934138412856,
-          "net_mean_return": -0.007681934138412859,
-          "net_total_return": -0.18610069270984853,
-          "win_rate": 0.3684210526315789,
-          "profit_factor": 0.7857898782485787,
-          "max_drawdown": -0.28171322986500635,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "test": {
-          "trades": 18,
-          "gross_mean_return": 0.007710984893464507,
-          "net_mean_return": 0.004710984893464504,
-          "net_total_return": 0.03398827569102991,
-          "win_rate": 0.4444444444444444,
-          "profit_factor": 1.1594662664184467,
-          "max_drawdown": -0.31775173861806716,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "fitness": -0.8137331578804181,
-        "status": "insufficient_sample",
-        "split_points": {
-          "train_end": 899,
-          "validation_end": 1199,
-          "test_end": 1499
-        },
-        "fitness_basis": "validation_only",
-        "minimum_trades_for_qualification": 100
-      }
-    },
-    {
-      "features": [
-        "roc_200_raw",
-        "sma_cross_9_72",
-        "ema_cross_7_14",
-        "sma_cross_9_12",
+        "sma_cross_10_20",
+        "ema_cross_14_100",
+        "ema_cross_60_144",
+        "pattern_long_line",
+        "bollinger_position_10_raw",
         "ema_cross_9_12",
-        "ema_cross_20_80",
-        "body_pct_55",
-        "zscore_60_raw"
+        "roc_30_raw",
+        "ema_cross_24_100",
+        "ema_cross_3_30",
+        "ema_cross_2_16",
+        "sma_cross_80_240",
+        "ema_cross_16_200"
       ],
       "direction": "long",
-      "threshold": 0.606,
-      "holding_bars": 4,
-      "bar": "1D",
-      "id": "aa118773d7df",
-      "evaluation": {
-        "train": {
-          "trades": 59,
-          "gross_mean_return": 0.037846177661900016,
-          "net_mean_return": 0.03484617766190002,
-          "net_total_return": 4.020357401825243,
-          "win_rate": 0.5254237288135594,
-          "profit_factor": 2.264842827422832,
-          "max_drawdown": -0.3043605591552697,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "validation": {
-          "trades": 24,
-          "gross_mean_return": 0.0073672580707554725,
-          "net_mean_return": 0.00436725807075547,
-          "net_total_return": 0.05223520836633644,
-          "win_rate": 0.4583333333333333,
-          "profit_factor": 1.193587080730664,
-          "max_drawdown": -0.193581680002062,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "test": {
-          "trades": 30,
-          "gross_mean_return": 0.009309064034098665,
-          "net_mean_return": 0.006309064034098662,
-          "net_total_return": 0.14370959798113048,
-          "win_rate": 0.4666666666666667,
-          "profit_factor": 1.3107519176521674,
-          "max_drawdown": -0.20092875580811587,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "fitness": 0.4111176390753408,
-        "status": "insufficient_sample",
-        "split_points": {
-          "train_end": 899,
-          "validation_end": 1199,
-          "test_end": 1499
-        },
-        "fitness_basis": "validation_only",
-        "minimum_trades_for_qualification": 100
-      }
-    },
-    {
-      "features": [
-        "momentum_40_raw",
-        "sma_cross_34_55",
-        "sma_cross_60_100",
-        "sma_cross_2_5"
-      ],
-      "direction": "long",
-      "threshold": 0.503,
-      "holding_bars": 16,
-      "bar": "1D",
-      "id": "7075763b5ee1",
-      "evaluation": {
-        "train": {
-          "trades": 22,
-          "gross_mean_return": 0.03581804435852068,
-          "net_mean_return": 0.032818044358520676,
-          "net_total_return": -0.034814514717397826,
-          "win_rate": 0.36363636363636365,
-          "profit_factor": 1.377831798558719,
-          "max_drawdown": -0.6121777500892631,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "validation": {
-          "trades": 8,
-          "gross_mean_return": -0.03096201668455069,
-          "net_mean_return": -0.03396201668455069,
-          "net_total_return": -0.2748838504600877,
-          "win_rate": 0.375,
-          "profit_factor": 0.504397206307556,
-          "max_drawdown": -0.33925263559792096,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "test": {
-          "trades": 10,
-          "gross_mean_return": -0.04744395692789281,
-          "net_mean_return": -0.05044395692789281,
-          "net_total_return": -0.4692485791178713,
-          "win_rate": 0.3,
-          "profit_factor": 0.4489139158061516,
-          "max_drawdown": -0.6367621404340573,
-          "estimated_round_trip_cost_bps": 30.0
-        },
-        "fitness": -3.4488769320148616,
-        "status": "insufficient_sample",
-        "split_points": {
-          "train_end": 899,
-          "validation_end": 1199,
-          "test_end": 1499
-        },
-        "fitness_basis": "validation_only",
-        "minimum_trades_for_qualification": 100
-      }
-    },
-    {
-      "features": [
-        "close_location_21",
-        "sma_cross_24_200",
-        "trend_regime_12",
-        "volatility_regime_72"
-      ],
-      "direction": "long",
-      "threshold": 0.349,
+      "threshold": 0.571,
       "holding_bars": 12,
       "bar": "1D",
-      "id": "bd7422dfa44d",
+      "id": "d26ed44a5c94",
       "evaluation": {
         "train": {
-          "trades": 36,
-          "gross_mean_return": 0.0322103595335614,
-          "net_mean_return": 0.029210359533561398,
-          "net_total_return": 0.17227926605179422,
-          "win_rate": 0.3888888888888889,
-          "profit_factor": 1.4272946857279956,
-          "max_drawdown": -0.62411686344952,
+          "trades": 23,
+          "gross_mean_return": 0.03690614859713866,
+          "net_mean_return": 0.033906148597138655,
+          "net_total_return": -0.0615123103717119,
+          "win_rate": 0.43478260869565216,
+          "profit_factor": 1.4515305171413373,
+          "max_drawdown": -0.7085472602503422,
           "estimated_round_trip_cost_bps": 30.0
         },
         "validation": {
-          "trades": 13,
-          "gross_mean_return": 0.024058391826654677,
-          "net_mean_return": 0.021058391826654674,
-          "net_total_return": 0.24438094451829118,
-          "win_rate": 0.6923076923076923,
-          "profit_factor": 1.7358165713770046,
-          "max_drawdown": -0.22723498689681054,
+          "trades": 10,
+          "gross_mean_return": -0.01753517150304762,
+          "net_mean_return": -0.020535171503047622,
+          "net_total_return": -0.2486282279974965,
+          "win_rate": 0.4,
+          "profit_factor": 0.6880225529292459,
+          "max_drawdown": -0.2754405454141503,
           "estimated_round_trip_cost_bps": 30.0
         },
         "test": {
-          "trades": 17,
-          "gross_mean_return": 0.017240679945883394,
-          "net_mean_return": 0.014240679945883392,
-          "net_total_return": 0.16699639081049744,
-          "win_rate": 0.4117647058823529,
-          "profit_factor": 1.4075600995054218,
-          "max_drawdown": -0.22433114418411326,
+          "trades": 11,
+          "gross_mean_return": 0.023317841087720673,
+          "net_mean_return": 0.02031784108772067,
+          "net_total_return": 0.19183161741184507,
+          "win_rate": 0.36363636363636365,
+          "profit_factor": 1.7829788158323594,
+          "max_drawdown": -0.20950389492031307,
           "estimated_round_trip_cost_bps": 30.0
         },
-        "fitness": 2.1038849147450174,
+        "fitness": -2.0960612048461775,
+        "status": "insufficient_sample",
+        "split_points": {
+          "train_end": 899,
+          "validation_end": 1199,
+          "test_end": 1499
+        },
+        "fitness_basis": "validation_only",
+        "minimum_trades_for_qualification": 100
+      }
+    },
+    {
+      "features": [
+        "bollinger_position_60_raw",
+        "momentum_20_raw",
+        "sma_cross_10_100",
+        "ema_cross_3_12",
+        "ema_cross_40_100",
+        "upper_wick_pct_200",
+        "roc_240_raw",
+        "ema_cross_24_34",
+        "ema_cross_120_240",
+        "trend_regime_20"
+      ],
+      "direction": "long",
+      "threshold": 0.754,
+      "holding_bars": 16,
+      "bar": "1D",
+      "id": "8d39f9e3035e",
+      "evaluation": {
+        "train": {
+          "trades": 15,
+          "gross_mean_return": 0.11239634413354946,
+          "net_mean_return": 0.10939634413354946,
+          "net_total_return": 2.579061568593464,
+          "win_rate": 0.6666666666666666,
+          "profit_factor": 3.6640098824654403,
+          "max_drawdown": -0.24268305112460598,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "validation": {
+          "trades": 5,
+          "gross_mean_return": -0.021356108774619152,
+          "net_mean_return": -0.024356108774619155,
+          "net_total_return": -0.13736631552203804,
+          "win_rate": 0.4,
+          "profit_factor": 0.5610663303589046,
+          "max_drawdown": -0.24997048076320472,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "test": {
+          "trades": 8,
+          "gross_mean_return": 0.00926468979722865,
+          "net_mean_return": 0.006264689797228648,
+          "net_total_return": -0.05837188411087102,
+          "win_rate": 0.25,
+          "profit_factor": 1.0978174490369137,
+          "max_drawdown": -0.319991535036835,
+          "estimated_round_trip_cost_bps": 30.0
+        },
+        "fitness": -2.478607925538236,
         "status": "insufficient_sample",
         "split_points": {
           "train_end": 899,
@@ -669,42 +660,42 @@
     {
       "bar": "5m",
       "status": "completed",
-      "cycle": 2341,
+      "cycle": 2347,
       "candles": 1500,
       "strategies_generated": 10
     },
     {
       "bar": "15m",
       "status": "completed",
-      "cycle": 2342,
+      "cycle": 2348,
       "candles": 1500,
       "strategies_generated": 10
     },
     {
       "bar": "30m",
       "status": "completed",
-      "cycle": 2343,
+      "cycle": 2349,
       "candles": 1500,
       "strategies_generated": 10
     },
     {
       "bar": "1H",
       "status": "completed",
-      "cycle": 2344,
+      "cycle": 2350,
       "candles": 1500,
       "strategies_generated": 10
     },
     {
       "bar": "4H",
       "status": "completed",
-      "cycle": 2345,
+      "cycle": 2351,
       "candles": 1500,
       "strategies_generated": 10
     },
     {
       "bar": "1D",
       "status": "completed",
-      "cycle": 2346,
+      "cycle": 2352,
       "candles": 1500,
       "strategies_generated": 10
     }
