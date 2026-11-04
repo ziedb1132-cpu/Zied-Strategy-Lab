@@ -317,7 +317,7 @@ def _correlation_diversity(candidates:list[dict[str,Any]],features:pd.DataFrame,
             'highly_correlated_pairs':len(pairs),'pairs':pairs}
 
 
-def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series)->dict[str,Any]:
+def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series,frame:pd.DataFrame|None=None)->dict[str,Any]:
     cols=[x for x in candidate['features'] if x in features.columns]
     n=len(close); hold=int(candidate['holding_bars'])
     empty={'trades':0,'gross_mean_return':0.0,'net_mean_return':0.0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
@@ -378,11 +378,15 @@ def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.S
     status='evaluated' if validation['trades']>=MIN_QUALIFYING_TRADES and test['trades']>=MIN_QUALIFYING_TRADES else 'insufficient_sample'
     walk_forward={'folds':fold_metrics,'folds_with_trades':len(valid_folds),'positive_folds':wf_positive,'mean_net_return':wf_mean}
     robustness_result={'threshold_factors':[0.90,1.0,1.10],'runs':robustness,'positive_runs':robust_positive,'mean_net_return':robust_mean}
-    advanced_validation=_advanced_execution(candidate,features,_clean_frame_for_execution(features,close),train_end,validation_end) if False else None
+    execution_frame=frame.copy().reset_index(drop=True) if frame is not None else pd.DataFrame({'open':close,'high':close,'low':close,'close':close})
+    advanced_validation=_advanced_execution(candidate,features,execution_frame,train_end,validation_end)
+    advanced_test=_advanced_execution(candidate,features,execution_frame,validation_end,n)
+    monte_carlo=_monte_carlo(advanced_validation.get('trade_returns',[]),seed=int(hashlib.sha1(candidate.get('id','').encode()).hexdigest()[:8],16) if candidate.get('id') else 17)
+    confidence=_confidence_score(validation,walk_forward,robustness_result,monte_carlo)
     return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
             'walk_forward':walk_forward,'market_regimes':regime_metrics,'robustness':robustness_result,
             'quality_score':float(max(0.0,min(100.0,50+fitness*100))),
-            'monte_carlo':_monte_carlo([]),'confidence_score':_confidence_score(validation,walk_forward,robustness_result,_monte_carlo([])),
+            'advanced_execution':{'validation':advanced_validation,'test':advanced_test},'monte_carlo':monte_carlo,'confidence_score':confidence,
             'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
             'fitness_basis':'validation_only','minimum_trades_for_qualification':MIN_QUALIFYING_TRADES}
 
@@ -408,7 +412,7 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
             cand['bar']=timeframe
             sig=hashlib.sha1(json.dumps(cand,sort_keys=True).encode()).hexdigest()
             if sig not in seen: seen.add(sig); cand['id']=sig[:12]; candidates.append(cand); break
-    for cand in candidates: cand['evaluation']=_evaluate_candidate(cand,features,close)
+    for cand in candidates: cand['evaluation']=_evaluate_candidate(cand,features,close,_clean(frame))
     # Persistent, candidate-specific out-of-sample score history.
     performance=memory.setdefault('performance',{})
     for cand in candidates:
@@ -429,6 +433,9 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['last_validation_trades']=int(validation.get('trades',0))
         stats['last_test_trades']=int(test.get('trades',0))
         stats['last_walk_forward']=ev.get('walk_forward',{})
+        stats['last_advanced_execution']=ev.get('advanced_execution',{})
+        stats['last_monte_carlo']=ev.get('monte_carlo',{})
+        stats['last_confidence_score']=float(ev.get('confidence_score',0.0))
         stats['last_market_regimes']=ev.get('market_regimes',{})
         stats['last_robustness']=ev.get('robustness',{})
         rolling=stats.setdefault('rolling_test_history',[])
@@ -549,7 +556,7 @@ def evaluate_cross_asset_candidates(candidates:list[dict[str,Any]], frames:dict[
             features=extract_features(frame)
             close=clean['close']
             for candidate in candidates:
-                ev=_evaluate_candidate(candidate,features,close)
+                ev=_evaluate_candidate(candidate,features,close,clean)
                 cross_validation=ev.get('validation',{})
                 results.setdefault(candidate['id'],{})[instrument]={
                     'validation':cross_validation,
