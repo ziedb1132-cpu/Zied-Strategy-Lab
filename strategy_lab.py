@@ -61,7 +61,15 @@ def _candlestick_features(o:pd.Series,h:pd.Series,l:pd.Series,c:pd.Series,v:pd.S
     f['pattern_spinning_top']=((body/rng<.3)&(upper/rng>.25)&(lower/rng>.25)).astype(int)
     f['pattern_high_wave']=((upper/rng>.35)&(lower/rng>.35)&(body/rng<.3)).astype(int)
     f['pattern_belt_hold']=((body/rng>.7)&((bull&(o<=l+.05*rng))|(bear&(o>=h-.05*rng)))).astype(int)
-    f['pattern_engulfing']=np.where((bull&bear.shift(1)&(c>=o.shift(1))&(o<=c.shift(1))),1,np.where((bear&bull.shift(1)&(o>=c.shift(1))&(c<=o.shift(1)),-1,0))
+    f['pattern_engulfing'] = np.where(
+        bull & bear.shift(1) & (c >= o.shift(1)) & (o <= c.shift(1)),
+        1,
+        np.where(
+            bear & bull.shift(1) & (o >= c.shift(1)) & (c <= o.shift(1)),
+            -1,
+            0,
+        ),
+    )
     inside=(top<top.shift())&(bot>bot.shift())
     f['pattern_harami']=inside.astype(int); f['pattern_harami_cross']=(inside&small).astype(int)
     f['pattern_matching_low']=((l-l.shift()).abs()/(c+1e-12)<.001)&bear&bear.shift(1)
