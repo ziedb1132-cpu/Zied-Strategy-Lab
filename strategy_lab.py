@@ -242,6 +242,7 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
     memory['schema_version']=2
     memory['cycle']=int(memory.get('cycle',0))+1
     memory['candidates']=(memory.get('candidates',[])+candidates)[-200:]
-    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'candidate_scores':[{'id':x['id'],'fitness':x['evaluation']['fitness'],'status':x['evaluation']['status'],'validation':x['evaluation']['validation'],'test':x['evaluation']['test']} for x in candidates}])[-500:]
+    cycle_scores=[{'id':x['id'],'fitness':x['evaluation']['fitness'],'status':x['evaluation']['status'],'validation':x['evaluation']['validation'],'test':x['evaluation']['test']} for x in candidates]
+    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'candidate_scores':cycle_scores}])[-500:]
     path.write_text(json.dumps(memory,indent=2,allow_nan=False),encoding='utf-8')
     return {'cycle':memory['cycle'],'feature_catalog_size':len(FEATURE_CATALOG),'computed_features':len(features.columns),'candlestick_patterns':CANDLE_PATTERNS,'candidates':candidates,'research_only':True,'estimated_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
