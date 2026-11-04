@@ -149,34 +149,70 @@ def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dic
     if pool: selected+=rng.sample(pool,k=min(rng.randint(4,10),len(pool)))
     return {'features':list(dict.fromkeys(selected)),'direction':rng.choice(['long','short','long_short']),'threshold':round(rng.uniform(.2,.8),3),'holding_bars':rng.choice([4,8,12,16,24,32,48])}
 
-def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series)->dict[str,Any]:
-    cols=[x for x in candidate['features'] if x in features.columns]
-    if not cols or len(close)<max(40,candidate['holding_bars']+2):
-        return {'trades':0,'gross_mean_return':0.0,'net_mean_return':0.0,'win_rate':0.0,'profit_factor':0.0,'fitness':-1.0}
-    # Feature-wise rolling z normalization prevents incompatible units dominating.
-    x=features[cols].copy(); means=x.rolling(100,min_periods=30).mean(); std=x.rolling(100,min_periods=30).std()
-    normalized=((x-means)/(std+1e-9)).clip(-4,4).fillna(0)
-    strength=normalized.mean(axis=1); signal=np.where(strength>candidate['threshold'],1,np.where(strength<-candidate['threshold'],-1,0))
-    if candidate['direction']=='long': signal=np.maximum(signal,0)
-    elif candidate['direction']=='short': signal=np.minimum(signal,0)
-    hold=int(candidate['holding_bars']); fwd=close.shift(-hold)/close-1
-    # Non-overlapping positions: enter only while flat; exit after holding period.
-    returns=[]; i=0; n=len(close); fee=(ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE)/10000
-    while i<n-hold:
+def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hold:int)->dict[str,Any]:
+    """Evaluate non-overlapping trades strictly inside one chronological segment."""
+    fee=(ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE)/10000.0
+    returns=[]; i=start; last=max(start,end-hold)
+    while i<last:
         side=int(signal[i])
-        if side==0: i+=1; continue
-        gross=side*float(fwd.iloc[i])
-        if np.isfinite(gross): returns.append(gross-fee)
+        if side==0:
+            i+=1
+            continue
+        entry=float(close.iloc[i]); exit_price=float(close.iloc[i+hold])
+        gross=side*(exit_price/entry-1.0) if entry>0 else float("nan")
+        if np.isfinite(gross):
+            returns.append(gross-fee)
         i+=hold
     arr=np.asarray(returns,dtype=float)
     wins=arr[arr>0]; losses=arr[arr<0]
-    win=float((arr>0).mean()) if len(arr) else 0.0
-    net=float(arr.mean()) if len(arr) else 0.0
-    gross_mean=float((arr+fee).mean()) if len(arr) else 0.0
-    pf=float(wins.sum()/abs(losses.sum())) if len(losses) and abs(losses.sum())>0 else (999.0 if len(wins) else 0.0)
-    # Cost-aware fitness; slight penalty for too few observations.
-    fitness=net*100+.12*(win-.5)-.03/max(len(arr),1)
-    return {'trades':int(len(arr)),'gross_mean_return':gross_mean,'net_mean_return':net,'win_rate':win,'profit_factor':pf,'fitness':float(fitness),'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
+    equity=np.cumprod(1.0+arr) if len(arr) else np.asarray([],dtype=float)
+    peak=np.maximum.accumulate(np.r_[1.0,equity])[1:] if len(arr) else equity
+    drawdown=(equity/peak-1.0) if len(arr) else equity
+    return {
+        'trades':int(len(arr)),
+        'gross_mean_return':float((arr+fee).mean()) if len(arr) else 0.0,
+        'net_mean_return':float(arr.mean()) if len(arr) else 0.0,
+        'net_total_return':float(np.prod(1.0+arr)-1.0) if len(arr) else 0.0,
+        'win_rate':float((arr>0).mean()) if len(arr) else 0.0,
+        'profit_factor':float(wins.sum()/abs(losses.sum())) if len(losses) and abs(losses.sum())>0 else (999.0 if len(wins) else 0.0),
+        'max_drawdown':float(drawdown.min()) if len(drawdown) else 0.0,
+        'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE,
+    }
+
+
+def _evaluate_candidate(candidate:dict[str,Any],features:pd.DataFrame,close:pd.Series)->dict[str,Any]:
+    cols=[x for x in candidate['features'] if x in features.columns]
+    n=len(close); hold=int(candidate['holding_bars'])
+    if not cols or n<max(120,hold*6):
+        empty={'trades':0,'gross_mean_return':0.0,'net_mean_return':0.0,'net_total_return':0.0,'win_rate':0.0,'profit_factor':0.0,'max_drawdown':0.0,'estimated_round_trip_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
+        return {'train':empty,'validation':empty,'test':empty,'fitness':-1.0,'status':'insufficient_history'}
+    # Causal rolling normalization: each row uses only that row and its past.
+    x=features[cols].astype(float)
+    means=x.rolling(100,min_periods=30).mean()
+    std=x.rolling(100,min_periods=30).std()
+    normalized=((x-means)/(std+1e-9)).clip(-4,4).fillna(0)
+    strength=normalized.mean(axis=1).to_numpy()
+    threshold=float(candidate['threshold'])
+    signal=np.where(strength>threshold,1,np.where(strength<-threshold,-1,0))
+    if candidate['direction']=='long':
+        signal=np.maximum(signal,0)
+    elif candidate['direction']=='short':
+        signal=np.minimum(signal,0)
+    # Chronological 60/20/20 split. The test segment is never used for fitness.
+    train_end=int(n*.60); validation_end=int(n*.80)
+    train=_segment_metrics(signal,close,0,train_end,hold)
+    validation=_segment_metrics(signal,close,train_end,validation_end,hold)
+    test=_segment_metrics(signal,close,validation_end,n,hold)
+    # Prefer validation net expectancy; penalize tiny samples and severe drawdown.
+    sample_penalty=0.03/max(validation['trades'],1)
+    fitness=(validation['net_mean_return']*100
+             +0.12*(validation['win_rate']-.5)
+             -0.10*abs(validation['max_drawdown'])
+             -sample_penalty) if validation['trades'] else -1.0
+    status='evaluated' if validation['trades']>=5 and test['trades']>=3 else 'low_sample'
+    return {'train':train,'validation':validation,'test':test,'fitness':float(fitness),'status':status,
+            'split_points':{'train_end':train_end,'validation_end':validation_end,'test_end':n},
+            'fitness_basis':'validation_only'}
 
 def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',candidate_count:int=10)->dict[str,Any]:
     if candidate_count!=10: raise ValueError('Exactly 10 strategies are generated per cycle.')
@@ -192,8 +228,20 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
             sig=hashlib.sha1(json.dumps(cand,sort_keys=True).encode()).hexdigest()
             if sig not in seen: seen.add(sig); cand['id']=sig[:12]; candidates.append(cand); break
     for cand in candidates: cand['evaluation']=_evaluate_candidate(cand,features,close)
+    # Persistent, candidate-specific out-of-sample score history.
+    performance=memory.setdefault('performance',{})
+    for cand in candidates:
+        ev=cand['evaluation']; test=ev.get('test',{})
+        stats=performance.setdefault(cand['id'],{'candidate':{k:v for k,v in cand.items() if k!='evaluation'},'cycles_seen':0,'test_trades':0,'test_wins':0,'test_net_return_sum':0.0,'last_test_net_mean_return':0.0})
+        stats['cycles_seen']+=1
+        stats['test_trades']+=int(test.get('trades',0))
+        stats['test_wins']+=int(round(test.get('win_rate',0.0)*test.get('trades',0)))
+        stats['test_net_return_sum']+=float(test.get('net_total_return',0.0))
+        stats['last_test_net_mean_return']=float(test.get('net_mean_return',0.0))
+        stats['test_win_rate']=stats['test_wins']/stats['test_trades'] if stats['test_trades'] else 0.0
+    memory['schema_version']=2
     memory['cycle']=int(memory.get('cycle',0))+1
     memory['candidates']=(memory.get('candidates',[])+candidates)[-200:]
-    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'candidate_scores':[x['evaluation'] for x in candidates]}])[-500:]
+    memory['history']=(memory.get('history',[])+[{'cycle':memory['cycle'],'candidate_scores':[{'id':x['id'],'fitness':x['evaluation']['fitness'],'status':x['evaluation']['status'],'validation':x['evaluation']['validation'],'test':x['evaluation']['test']} for x in candidates}])[-500:]
     path.write_text(json.dumps(memory,indent=2,allow_nan=False),encoding='utf-8')
     return {'cycle':memory['cycle'],'feature_catalog_size':len(FEATURE_CATALOG),'computed_features':len(features.columns),'candlestick_patterns':CANDLE_PATTERNS,'candidates':candidates,'research_only':True,'estimated_cost_bps':ROUND_TRIP_FEE_BPS+2*SLIPPAGE_BPS_PER_SIDE}
