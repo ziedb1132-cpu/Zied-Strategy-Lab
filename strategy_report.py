@@ -9,12 +9,12 @@ def _label(value: str) -> str:
     words=value.replace("pattern_","candlestick ").replace("_"," ").split()
     return " ".join(w.upper() if w.lower() in {"rsi","ema","sma","adx","atr","macd","obv","vwap"} else w.title() for w in words)
 
-def _name(c: dict[str,Any]) -> str:
+def _name(c: dict[str,Any], instrument: str) -> str:
     families=[]
     for feature in c.get("features",[])[:2]:
         f=feature.split("_")[0]
         families.append(f.upper() if f in {"rsi","ema","sma","adx","atr","macd","obv"} else f.title())
-    return "SOL Buy · " + (" + ".join(families) if families else "Multi-signal") + " · " + c.get("id","")
+    return instrument.replace("-"," ") + " Buy · " + (" + ".join(families) if families else "Multi-signal") + " · " + c.get("id","")
 
 def _explain(c: dict[str,Any]) -> str:
     features=", ".join(_label(x) for x in c.get("features",[]))
@@ -33,7 +33,7 @@ def build_report(memory_path="data/lab_memory.json", latest_path="data/latest_cy
         if c.get("direction")!="long":
             continue
         strategies.append({
-            "id":sid,"name":_name(c),"explanation":_explain(c),"direction":"BUY","inverted":False,
+            "id":sid,"name":_name(c, latest.get("data_source",{}).get("inst_id","SOL-USDT")),"explanation":_explain(c),"direction":"BUY","inverted":False,
             "features":c.get("features",[]),"threshold":c.get("threshold"),"holding_bars":c.get("holding_bars"),
             "cycles_seen":int(stats.get("cycles_seen",0)),
             "validation_trades":int(stats.get("last_validation_trades",0)),
@@ -83,7 +83,7 @@ document.getElementById('subtitle').textContent=d.instrument+' · '+d.bar+' · �
 document.getElementById('updated').textContent='آخر تحديث: '+new Date(d.updated_at).toLocaleString('ar-TN')+' — '+d.success_rule;
 box.innerHTML=d.strategies.map(function(s){return '<article class="strategy"><h3>'+esc(s.name)+'</h3><div class="meta"><span class="tag">شراء فقط</span><span class="tag">'+s.features.length+' خصائص</span><span class="tag">'+s.holding_bars+' شموع</span><span class="tag">'+s.cycles_seen+' دورات ظهور</span><span class="'+(s.successful?'good':'bad')+'">'+(s.successful?'ناجحة وفق شروط الاختبار':'لم تجتز شروط النجاح')+'</span></div><p>'+esc(s.explanation)+'</p><div class="metrics"><div class="metric"><small>عائد التحقق الصافي</small><b class="'+(s.validation_net_total_return>=0?'good':'bad')+'">'+(s.validation_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>عائد الاختبار الصافي</small><b class="'+(s.test_net_total_return>=0?'good':'bad')+'">'+(s.test_net_total_return*100).toFixed(2)+'%</b></div><div class="metric"><small>Profit Factor</small><b>'+s.test_profit_factor.toFixed(3)+'</b></div><div class="metric"><small>Win Rate</small><b>'+(s.test_win_rate*100).toFixed(1)+'%</b></div></div></article>'}).join('')||'<div class="card">لم تُكتشف استراتيجيات شراء بعد.</div>';
 }catch(e){box.textContent='تعذر تحميل التقرير: '+e.message+' — تحقق من وجود strategy_report.json بجانب الصفحة.'}}
-loadReport();
+loadReport();setInterval(loadReport,60000);
 </script></body></html>'''
     Path(html_path).write_text(page,encoding="utf-8")
     return report
