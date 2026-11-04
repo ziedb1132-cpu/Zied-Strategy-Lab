@@ -10,7 +10,7 @@ from strategy_lab import discover_cycle
 def main() -> None:
     parser = argparse.ArgumentParser(description="Research-only strategy discovery using public OKX Spot candles.")
     parser.add_argument("--csv", help="Optional local OHLCV CSV; when omitted, fetch candles from OKX.")
-    parser.add_argument("--inst-id", default="BTC-USDT", help="OKX Spot USDT instrument, e.g. BTC-USDT.")
+    parser.add_argument("--inst-id", default="SOL-USDT", help="OKX Spot USDT instrument, e.g. SOL-USDT.")
     parser.add_argument("--bar", default="1H", help="OKX candle interval, e.g. 5m, 15m, 1H, 4H, 1D.")
     parser.add_argument("--candles", type=int, default=1500, help="Confirmed historical candles (120-10000).")
     parser.add_argument("--timeout", type=int, default=20)
