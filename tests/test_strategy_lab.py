@@ -117,3 +117,27 @@ def test_default_historical_windows_are_configured_for_all_bars():
 def test_qualification_requires_forty_trades():
     from strategy_lab import MIN_QUALIFYING_TRADES
     assert MIN_QUALIFYING_TRADES == 40
+
+
+def test_evaluation_includes_walk_forward_regimes_and_robustness():
+    from strategy_lab import _evaluate_candidate
+    frame = sample_ohlcv(900)
+    features = extract_features(frame)
+    candidate = {"features": ["ema_5_raw", "rsi_14_raw", "pattern_doji"],
+                 "direction": "long", "threshold": 0.2, "holding_bars": 4}
+    result = _evaluate_candidate(candidate, features, frame["close"].iloc[:-1].reset_index(drop=True))
+    assert len(result["walk_forward"]["folds"]) == 4
+    assert set(result["robustness"]["threshold_factors"]) == {0.9, 1.0, 1.1}
+    assert isinstance(result["market_regimes"], dict)
+    assert result["fitness_basis"] == "validation_only"
+
+
+def test_cross_asset_validation_is_reported_separately():
+    from strategy_lab import evaluate_cross_asset_candidates
+    frame = sample_ohlcv(500)
+    candidate = {"id": "cross-test", "features": ["ema_5_raw", "rsi_14_raw"],
+                 "direction": "long", "threshold": 0.2, "holding_bars": 4}
+    result = evaluate_cross_asset_candidates([candidate], {"ETH-USDT": frame})
+    assert "ETH-USDT" in result["cross-test"]
+    assert "validation" in result["cross-test"]["ETH-USDT"]
+    assert "test" not in result["cross-test"]["ETH-USDT"]
