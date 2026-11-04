@@ -147,7 +147,7 @@ def _make_candidate(seed:int,prior:list[dict[str,Any]],available:list[str])->dic
         selected=[x for x in rng.choice(prior[-30:]).get('features',[]) if x in available][:rng.randint(3,8)]
     pool=[x for x in available if x not in selected]
     if pool: selected+=rng.sample(pool,k=min(rng.randint(4,10),len(pool)))
-    return {'features':list(dict.fromkeys(selected)),'direction':rng.choice(['long','short','long_short']),'threshold':round(rng.uniform(.2,.8),3),'holding_bars':rng.choice([4,8,12,16,24,32,48])}
+    return {'features':list(dict.fromkeys(selected)),'direction':'long','threshold':round(rng.uniform(.2,.8),3),'holding_bars':rng.choice([4,8,12,16,24,32,48])}
 
 def _segment_metrics(signal:np.ndarray, close:pd.Series, start:int, end:int, hold:int)->dict[str,Any]:
     """Evaluate non-overlapping trades strictly inside one chronological segment."""
@@ -238,6 +238,21 @@ def discover_cycle(frame:pd.DataFrame,memory_path:str='data/lab_memory.json',can
         stats['test_wins']+=int(round(test.get('win_rate',0.0)*test.get('trades',0)))
         stats['test_net_return_sum']+=float(test.get('net_total_return',0.0))
         stats['last_test_net_mean_return']=float(test.get('net_mean_return',0.0))
+        stats['last_test_net_total_return']=float(test.get('net_total_return',0.0))
+        stats['last_test_profit_factor']=float(test.get('profit_factor',0.0))
+        validation=ev.get('validation',{})
+        stats['last_validation_net_total_return']=float(validation.get('net_total_return',0.0))
+        stats['last_validation_profit_factor']=float(validation.get('profit_factor',0.0))
+        stats['last_validation_trades']=int(validation.get('trades',0))
+        stats['last_test_trades']=int(test.get('trades',0))
+        stats['successful']=bool(
+            ev.get('status')=='evaluated'
+            and validation.get('trades',0)>=5 and test.get('trades',0)>=3
+            and validation.get('net_total_return',0)>0
+            and test.get('net_total_return',0)>0
+            and validation.get('profit_factor',0)>1
+            and test.get('profit_factor',0)>1
+        )
         stats['test_win_rate']=stats['test_wins']/stats['test_trades'] if stats['test_trades'] else 0.0
     memory['schema_version']=2
     memory['cycle']=int(memory.get('cycle',0))+1
