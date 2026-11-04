@@ -26,28 +26,35 @@ def main() -> None:
 
     runs = []
     for bar in bars:
-        if args.csv:
-            frame = pd.read_csv(args.csv)
-            source = {"type": "csv", "file": args.csv, "market": "spot",
-                      "inst_id": args.inst_id, "bar": bar}
-        else:
-            frame = fetch_okx_candles(args.inst_id, bar, args.candles, args.timeout)
-            source = {"type": "okx_public_api", "exchange": "OKX", "market": "spot",
-                      "inst_id": args.inst_id, "bar": bar,
-                      "candles_requested": args.candles, "candles_received": len(frame)}
+        try:
+            if args.csv:
+                frame = pd.read_csv(args.csv)
+                source = {"type": "csv", "file": args.csv, "market": "spot",
+                          "inst_id": args.inst_id, "bar": bar}
+            else:
+                frame = fetch_okx_candles(args.inst_id, bar, args.candles, args.timeout)
+                source = {"type": "okx_public_api", "exchange": "OKX", "market": "spot",
+                          "inst_id": args.inst_id, "bar": bar,
+                          "candles_requested": args.candles, "candles_received": len(frame)}
 
-        result = discover_cycle(frame, memory_path=args.memory, candidate_count=10, timeframe=bar)
-        result["data_source"] = source
-        out = Path(args.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
-        report = build_report(args.memory, args.out)
-        runs.append({"bar": bar, "cycle": result["cycle"], "candles": len(frame),
-                     "strategies_generated": len(result["candidates"])})
-        print(f"Cycle {result['cycle']} ({bar}) complete: {len(result['candidates'])} BUY candidates; "
-              f"{report['strategies_discovered']} unique strategies across timeframes; "
-              f"{report['successful_buy_strategies']} successful.")
+            result = discover_cycle(frame, memory_path=args.memory, candidate_count=10, timeframe=bar)
+            result["data_source"] = source
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
+            report = build_report(args.memory, args.out)
+            runs.append({"bar": bar, "status": "completed", "cycle": result["cycle"],
+                         "candles": len(frame), "strategies_generated": len(result["candidates"])})
+            print(f"Cycle {result['cycle']} ({bar}) complete: {len(result['candidates'])} BUY candidates; "
+                  f"{report['strategies_discovered']} unique strategies across timeframes; "
+                  f"{report['successful_buy_strategies']} successful.")
+        except Exception as exc:
+            runs.append({"bar": bar, "status": "skipped", "error": str(exc)})
+            print(f"WARNING: timeframe {bar} skipped: {exc}")
 
+
+    if not Path(args.out).exists():
+        raise RuntimeError("No timeframe produced usable candles; no cycle report can be generated.")
     latest = json.loads(Path(args.out).read_text(encoding="utf-8"))
     latest["timeframe_runs"] = runs
     latest["all_timeframes"] = bars
